@@ -669,3 +669,313 @@ const StorageConfigDetail: React.FC = () => {
                     Tamanho Total
                   </h3>
                   <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                    {formatSize(filesStats.totalSize)}
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-100 dark:border-yellow-800">
+                  <h3 className="text-sm font-medium text-yellow-900 dark:text-yellow-100 mb-1 flex items-center">
+                    <Upload className="h-4 w-4 mr-1" />
+                    Uploads Recentes
+                  </h3>
+                  <p className="text-xl font-bold text-yellow-700 dark:text-yellow-300">
+                    {filesStats.recentUploads}
+                  </p>
+                </div>
+                
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-100 dark:border-purple-800">
+                  <h3 className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-1 flex items-center">
+                    <Server className="h-4 w-4 mr-1" />
+                    Uso do Espaço
+                  </h3>
+                  <p className="text-xl font-bold text-purple-700 dark:text-purple-300">
+                    {filesStats.usedPercentage.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+              
+              {/* Estatísticas por módulo */}
+              <div className="mt-8">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+                  <Settings className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
+                  Uso por Módulo
+                </h3>
+                
+                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-600">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-200 sm:pl-6">
+                          Módulo
+                        </th>
+                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
+                          Arquivos
+                        </th>
+                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200">
+                          Tamanho
+                        </th>
+                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                          <span className="sr-only">Ações</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
+                      {moduleStats.map((stat) => (
+                        <tr key={stat.moduleCode}>
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-gray-200 sm:pl-6">
+                            {stat.moduleName}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            {stat.filesCount.toLocaleString()}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            {formatSize(stat.totalSize)}
+                          </td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <button
+                              type="button"
+                              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">Ver detalhes de {stat.moduleName}</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Configurações do provedor */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                <Settings className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+                Configurações do Provedor
+              </h2>
+            </div>
+            
+            <div className="p-6">
+              {Object.entries(config.settings || {}).length > 0 ? (
+                <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                  {Object.entries(config.settings).map(([key, value]) => (
+                    <div key={key}>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{key}</dt>
+                      <dd className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {typeof value === 'boolean' ? (
+                          value ? 'Sim' : 'Não'
+                        ) : typeof value === 'object' ? (
+                          <pre className="mt-1 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 rounded p-2 overflow-auto">
+                            {JSON.stringify(value, null, 2)}
+                          </pre>
+                        ) : (
+                          String(value)
+                        )}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                  Nenhuma configuração específica definida para este provedor.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Coluna da direita - Informações adicionais */}
+        <div className="space-y-6">
+          {/* Credencial */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                <Key className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+                Credencial
+              </h2>
+            </div>
+            
+            <div className="p-6">
+              {credential ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Nome</h3>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{credential.name}</p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Tipo de Autenticação</h3>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{credential.authType}</p>
+                  </div>
+                  
+                  {'tenantId' in credential && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Tipo</h3>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        Credencial de Tenant
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</h3>
+                    <div className="mt-1">
+                      {credential.isActive ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                          <CheckCircle size={12} className="mr-1" />
+                          Ativa
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300">
+                          <AlertCircle size={12} className="mr-1" />
+                          Inativa
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {credential.expiresAt && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Expira em</h3>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {formatDate(credential.expiresAt)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {credential.lastUsedAt && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Último uso</h3>
+                      <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                        {formatDate(credential.lastUsedAt)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <Lock className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Credencial não encontrada ou inacessível
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Informações do provedor */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                <Globe className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+                Provedor
+              </h2>
+            </div>
+            
+            <div className="p-6">
+              {provider ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Nome</h3>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{provider.name}</p>
+                  </div>
+                  
+                  {provider.description && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Descrição</h3>
+                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{provider.description}</p>
+                    </div>
+                  )}
+                  
+                  {provider.features && provider.features.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Recursos</h3>
+                      <ul className="mt-2 grid grid-cols-1 gap-2">
+                        {provider.features.map((feature, index) => (
+                          <li
+                            key={index}
+                            className="flex items-center text-sm text-gray-600 dark:text-gray-300"
+                          >
+                            <CheckCircle size={16} className="text-green-500 mr-2" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {provider.helpUrl && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Documentação</h3>
+                      <div className="mt-1">
+                        <a
+                          href={provider.helpUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                        >
+                          <Info size={16} className="mr-1" />
+                          Ver documentação
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <Globe className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Informações do provedor não disponíveis
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Ações */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                <Settings className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+                Ações
+              </h2>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Baixar Relatório
+                </button>
+                
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configurar Permissões
+                </button>
+                
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 border border-red-300 dark:border-red-600 text-sm font-medium rounded-md shadow-sm text-red-700 dark:text-red-200 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <Trash className="h-4 w-4 mr-2" />
+                  Remover Configuração
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default StorageConfigDetail;
