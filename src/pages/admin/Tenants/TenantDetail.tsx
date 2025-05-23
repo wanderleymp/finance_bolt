@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { SaaSModule, SaaSPlan } from '../../../types';
+import { HardDrive } from 'lucide-react';
 
 const TenantDetail: React.FC = () => {
   const navigate = useNavigate();

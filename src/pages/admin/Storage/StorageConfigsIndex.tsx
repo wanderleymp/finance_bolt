@@ -513,12 +513,6 @@ const StorageConfigsIndex: React.FC = () => {
                           <span className="mx-1.5">•</span>
                           {config.configType === 'system' ? 'Sistema' : 'Tenant'}
                         </p>
-                        {config.settings.basePath && (
-                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                            <HardDrive size={12} className="mr-1" />
-                            Pasta: {config.settings.basePath}
-                          </p>
-                        )}
                         {config.description && (
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                             {config.description}
@@ -645,4 +639,21 @@ const StorageConfigsIndex: React.FC = () => {
                           className="p-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/40 rounded-md"
                           title="Excluir"
                         >
-                          
+                          <Trash size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </AdminRedirect>
+  );
+};
+
+export default StorageConfigsIndex;
+
+export default StorageConfigsIndex
