@@ -661,5 +661,3 @@ const StorageConfigsIndex: React.FC = () => {
 };
 
 export default StorageConfigsIndex;
-
-export default StorageConfigsIndex
