@@ -186,51 +186,44 @@ const StorageConfigForm: React.FC = () => {
       setCredentialsLoading(true);
       console.log(`StorageConfigForm: Carregando credenciais para provedor: ${provider}`);
       
-      // Obter provedor atual para saber quais tipos de credenciais são compatíveis
-      const currentProvider = providers.find(p => p.code === provider);
-      
-      if (!currentProvider) {
-        console.error(`StorageConfigForm: Provedor não encontrado: ${provider}`);
-        
-        // Buscar todos os provedores disponíveis
-        const { data: allProviders } = await supabase
-          .from('storage_providers')
-          .select('code, name, credential_providers')
-          .eq('is_active', true);
-          
-        console.log('StorageConfigForm: Provedores disponíveis:', allProviders);
-        
-        // Verificar se o provedor existe no banco de dados
-        const providerExists = allProviders?.some(p => p.code === provider);
-        
-        if (providerExists) {
-          // Se o provedor existe mas não foi carregado, tentar recarregar os provedores
-          await fetchProviders();
-          
-          // Usar credenciais genéricas para este provedor
-          const compatibleCredentialProviders = ['google', 'google_oauth2'];
-          
-          // Continuar com a busca de credenciais
-          console.log(`StorageConfigForm: Usando provedores de credenciais compatíveis: ${compatibleCredentialProviders.join(', ')}`);
-        } else {
-          setError(`Provedor "${provider}" não está disponível ou foi removido do sistema. Por favor, selecione outro provedor.`);
-          setSystemCredentials([]);
-          setTenantCredentials([]);
-          return;
-        }
-      }
-      
       // Determinar provedores de credenciais compatíveis
       let compatibleCredentialProviders: string[] = [];
       
+      // Obter provedor atual para saber quais tipos de credenciais são compatíveis
+      const currentProvider = providers.find(p => p.code === provider);
+      
       if (currentProvider?.credentialProviders) {
         compatibleCredentialProviders = currentProvider.credentialProviders;
-      } else if (provider === 'google_drive') {
-        // Fallback para Google Drive
-        compatibleCredentialProviders = ['google', 'google_oauth2'];
       } else {
-        // Fallback genérico baseado no nome do provedor
-        compatibleCredentialProviders = [provider];
+        // Se o provedor não for encontrado, tentar determinar os provedores de credenciais compatíveis
+        // baseado no código do provedor
+        switch (provider) {
+          case 'google_drive':
+            compatibleCredentialProviders = ['google', 'google_oauth2'];
+            break;
+          case 'dropbox':
+            compatibleCredentialProviders = ['dropbox', 'dropbox_oauth2'];
+            break;
+          case 'onedrive':
+            compatibleCredentialProviders = ['microsoft', 'microsoft_oauth2'];
+            break;
+          case 's3':
+          case 'aws':
+            compatibleCredentialProviders = ['aws', 's3'];
+            break;
+          default:
+            // Usar o próprio código do provedor como fallback
+            compatibleCredentialProviders = [provider];
+        }
+        
+        // Adicionar aviso sobre provedor não encontrado
+        console.warn(`StorageConfigForm: Provedor "${provider}" não encontrado. Usando provedores de credenciais compatíveis: ${compatibleCredentialProviders.join(', ')}`);
+        
+        addToast({
+          title: 'Atenção',
+          message: `O provedor "${provider}" não está mais disponível. Por favor, selecione outro provedor.`,
+          type: 'warning'
+        });
       }
       
       console.log(`StorageConfigForm: Provedores de credenciais compatíveis: ${compatibleCredentialProviders.join(', ')}`);
