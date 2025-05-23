@@ -184,20 +184,56 @@ const StorageConfigForm: React.FC = () => {
   const fetchCredentials = async (provider: string, configType: 'system' | 'tenant', tenantId?: string) => {
     try {
       setCredentialsLoading(true);
-      console.log(`StorageConfigForm: Carregando credenciais para ${provider}...`);
+      console.log(`StorageConfigForm: Carregando credenciais para provedor: ${provider}`);
       
       // Obter provedor atual para saber quais tipos de credenciais são compatíveis
       const currentProvider = providers.find(p => p.code === provider);
       
       if (!currentProvider) {
-        console.error('StorageConfigForm: Provedor não encontrado:', provider);
-        setError(`Provedor "${provider}" não está disponível ou foi removido do sistema. Por favor, selecione outro provedor.`);
-        setSystemCredentials([]);
-        setTenantCredentials([]);
-        return;
+        console.error(`StorageConfigForm: Provedor não encontrado: ${provider}`);
+        
+        // Buscar todos os provedores disponíveis
+        const { data: allProviders } = await supabase
+          .from('storage_providers')
+          .select('code, name, credential_providers')
+          .eq('is_active', true);
+          
+        console.log('StorageConfigForm: Provedores disponíveis:', allProviders);
+        
+        // Verificar se o provedor existe no banco de dados
+        const providerExists = allProviders?.some(p => p.code === provider);
+        
+        if (providerExists) {
+          // Se o provedor existe mas não foi carregado, tentar recarregar os provedores
+          await fetchProviders();
+          
+          // Usar credenciais genéricas para este provedor
+          const compatibleCredentialProviders = ['google', 'google_oauth2'];
+          
+          // Continuar com a busca de credenciais
+          console.log(`StorageConfigForm: Usando provedores de credenciais compatíveis: ${compatibleCredentialProviders.join(', ')}`);
+        } else {
+          setError(`Provedor "${provider}" não está disponível ou foi removido do sistema. Por favor, selecione outro provedor.`);
+          setSystemCredentials([]);
+          setTenantCredentials([]);
+          return;
+        }
       }
       
-      const compatibleCredentialProviders = currentProvider.credentialProviders || [];
+      // Determinar provedores de credenciais compatíveis
+      let compatibleCredentialProviders: string[] = [];
+      
+      if (currentProvider?.credentialProviders) {
+        compatibleCredentialProviders = currentProvider.credentialProviders;
+      } else if (provider === 'google_drive') {
+        // Fallback para Google Drive
+        compatibleCredentialProviders = ['google', 'google_oauth2'];
+      } else {
+        // Fallback genérico baseado no nome do provedor
+        compatibleCredentialProviders = [provider];
+      }
+      
+      console.log(`StorageConfigForm: Provedores de credenciais compatíveis: ${compatibleCredentialProviders.join(', ')}`);
       
       // Buscar credenciais do sistema
       const { data: systemData, error: systemError } = await supabase
@@ -609,6 +645,90 @@ const StorageConfigForm: React.FC = () => {
   // Renderizar campos de configuração baseados no schema do provedor
   const renderSettingsFields = () => {
     if (!selectedProvider || !selectedProvider.settingsSchema) {
+      // Fallback para Google Drive se não houver schema
+      if (formData.provider === 'google_drive') {
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                ID da Pasta Raiz
+              </label>
+              <input
+                type="text"
+                value={formData.settings.rootFolderId || ''}
+                onChange={(e) => handleSettingsChange('rootFolderId', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder="ID da pasta do Google Drive (opcional)"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Deixe em branco para usar a raiz do Drive
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Caminho Virtual <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.settings.basePath || ''}
+                onChange={(e) => handleSettingsChange('basePath', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                placeholder="/dados/empresa"
+                required
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Caminho virtual para organização de arquivos
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Formato de Nomes
+              </label>
+              <select
+                value={formData.settings.fileNaming || 'original'}
+                onChange={(e) => handleSettingsChange('fileNaming', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              >
+                <option value="original">Original</option>
+                <option value="uuid">UUID</option>
+                <option value="date_prefix">Data + Original</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Permissões Padrão <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.settings.defaultPermissions || 'private'}
+                onChange={(e) => handleSettingsChange('defaultPermissions', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                required
+              >
+                <option value="private">Privado</option>
+                <option value="anyone_with_link">Qualquer pessoa com o link</option>
+                <option value="public">Público</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="createSharedFolders"
+                checked={!!formData.settings.createSharedFolders}
+                onChange={(e) => handleSettingsChange('createSharedFolders', e.target.checked)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              />
+              <label htmlFor="createSharedFolders" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                Criar pastas compartilhadas
+              </label>
+            </div>
+          </div>
+        );
+      }
+      
       return (
         <div className="text-sm text-gray-500 dark:text-gray-400 italic">
           Nenhuma configuração específica necessária para este provedor.
@@ -811,9 +931,11 @@ const StorageConfigForm: React.FC = () => {
   // Renderizar ícone com base no código de provedor
   const renderProviderIcon = (providerCode: string) => {
     switch (providerCode) {
-      case 'aws_s3':
+      case 'aws_s3': 
+      case 's3':
         return <Cloud />;
       case 'google_cloud_storage':
+      case 'google_drive':
         return <Cloud />;
       case 'azure_blob':
         return <Cloud />;
