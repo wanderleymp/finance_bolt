@@ -983,7 +983,3 @@ const StorageConfigDetail: React.FC = () => {
 };
 
 export default StorageConfigDetail;
-
-export default StorageConfigDetail
-
-export default StorageConfigDetail

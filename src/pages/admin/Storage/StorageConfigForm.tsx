@@ -1204,5 +1204,3 @@ const StorageConfigForm: React.FC = () => {
 };
 
 export default StorageConfigForm;
-
-export default StorageConfigForm
