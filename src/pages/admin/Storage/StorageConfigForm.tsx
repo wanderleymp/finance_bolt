@@ -768,11 +768,471 @@ const StorageConfigForm: React.FC = () => {
           if (fieldSchema.type === 'number') {
             return (
               <div key={key}>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700  dark:text-gray-300 mb-1">
                   {fieldSchema.label || key}
                   {fieldSchema.required && <span className="text-red-500 ml-1">*</span>}
                 </label>
                 <input
                   type="number"
                   value={formData.settings[key] || ''}
-                  onChange={(e) => handleSettingsChange(
+                  onChange={(e) => handleSettingsChange(key, parseFloat(e.target.value) || 0)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required={fieldSchema.required}
+                  min={fieldSchema.min}
+                  max={fieldSchema.max}
+                  step={fieldSchema.step || 1}
+                />
+                {fieldSchema.help && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{fieldSchema.help}</p>
+                )}
+              </div>
+            );
+          }
+          
+          // Campo booleano (checkbox)
+          if (fieldSchema.type === 'boolean') {
+            return (
+              <div key={key} className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`setting-${key}`}
+                  checked={!!formData.settings[key]}
+                  onChange={(e) => handleSettingsChange(key, e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <label htmlFor={`setting-${key}`} className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                  {fieldSchema.label || key}
+                </label>
+                {fieldSchema.help && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{fieldSchema.help}</p>
+                )}
+              </div>
+            );
+          }
+          
+          // Campo de seleção
+          if (fieldSchema.type === 'select' && fieldSchema.options) {
+            return (
+              <div key={key}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {fieldSchema.label || key}
+                  {fieldSchema.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <select
+                  value={formData.settings[key] || ''}
+                  onChange={(e) => handleSettingsChange(key, e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required={fieldSchema.required}
+                >
+                  <option value="">Selecione...</option>
+                  {fieldSchema.options.map((opt: any) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {fieldSchema.help && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{fieldSchema.help}</p>
+                )}
+              </div>
+            );
+          }
+          
+          return null; // Ignorar tipos de campo não suportados
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/admin/storage')}
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {mode === 'create' ? 'Nova Configuração de Armazenamento' : 'Editar Configuração de Armazenamento'}
+            </h1>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/admin/storage')}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <div className="flex items-center space-x-2">
+                <X className="w-4 h-4" />
+                <span>Cancelar</span>
+              </div>
+            </button>
+            
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className={`px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+                loading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Save className="w-4 h-4" />
+                <span>{loading ? 'Salvando...' : 'Salvar'}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+        
+        {/* Mensagens de erro/sucesso */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+            <div className="flex items-center space-x-2 text-red-700 dark:text-red-400">
+              <AlertTriangle className="w-5 h-5" />
+              <span className="font-medium">{error}</span>
+            </div>
+          </div>
+        )}
+        
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+            <div className="flex items-center space-x-2 text-green-700 dark:text-green-400">
+              <CheckSquare className="w-5 h-5" />
+              <span className="font-medium">{success}</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Formulário */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Informações básicas */}
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              Informações Básicas
+            </h2>
+            
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Nome <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
+                    formErrors.name
+                      ? 'border-red-300 dark:border-red-600'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  placeholder="Nome da configuração"
+                  required
+                />
+                {formErrors.name && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{formErrors.name}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Descrição
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  placeholder="Descrição opcional da configuração"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tipo de Configuração <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="configType"
+                  value={formData.configType}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  required
+                >
+                  <option value="system">Sistema</option>
+                  <option value="tenant">Tenant</option>
+                </select>
+              </div>
+              
+              {formData.configType === 'tenant' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tenant <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div
+                      onClick={() => setShowTenantSearch(true)}
+                      className={`w-full px-4 py-2 border rounded-md shadow-sm cursor-pointer bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
+                        formErrors.tenantId
+                          ? 'border-red-300 dark:border-red-600'
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                    >
+                      {selectedTenant ? (
+                        <span>{selectedTenant.name}</span>
+                      ) : (
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Selecione um tenant...
+                        </span>
+                      )}
+                    </div>
+                    
+                    {showTenantSearch && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
+                        <div className="p-2 border-b border-gray-300 dark:border-gray-600">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <input
+                              type="text"
+                              value={tenantSearchTerm}
+                              onChange={(e) => setTenantSearchTerm(e.target.value)}
+                              className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                              placeholder="Buscar tenant..."
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="max-h-60 overflow-y-auto">
+                          {filteredTenants.length > 0 ? (
+                            filteredTenants.map((tenant) => (
+                              <div
+                                key={tenant.id}
+                                onClick={() => handleTenantSelect(tenant)}
+                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                              >
+                                {tenant.name}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 py-2 text-gray-500 dark:text-gray-400 italic">
+                              Nenhum tenant encontrado
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {formErrors.tenantId && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                      {formErrors.tenantId}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="isActive"
+                    className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    Ativo
+                  </label>
+                </div>
+                
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isDefault"
+                    name="isDefault"
+                    checked={formData.isDefault}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="isDefault"
+                    className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    Padrão
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Provedor e Credenciais */}
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              Provedor e Credenciais
+            </h2>
+            
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Provedor <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    name="provider"
+                    value={formData.provider}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-2 pl-10 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
+                      formErrors.provider
+                        ? 'border-red-300 dark:border-red-600'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    required
+                    disabled={providersLoading}
+                  >
+                    <option value="">Selecione um provedor...</option>
+                    {providers.map((provider) => (
+                      <option key={provider.code} value={provider.code}>
+                        {provider.name}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    {selectedProvider?.icon ? (
+                      <img
+                        src={selectedProvider.icon}
+                        alt={selectedProvider.name}
+                        className="w-5 h-5"
+                      />
+                    ) : (
+                      <Cloud className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+                {formErrors.provider && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                    {formErrors.provider}
+                  </p>
+                )}
+                {providersLoading && (
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Carregando provedores...
+                  </p>
+                )}
+              </div>
+              
+              {selectedProvider && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Credencial <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      name="credentialId"
+                      value={formData.credentialId}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-2 pl-10 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
+                        formErrors.credentialId
+                          ? 'border-red-300 dark:border-red-600'
+                          : 'border-gray-300 dark:border-gray-600'
+                      }`}
+                      required
+                      disabled={credentialsLoading}
+                    >
+                      <option value="">Selecione uma credencial...</option>
+                      {availableCredentials.map((cred) => (
+                        <option key={cred.id} value={cred.id}>
+                          {cred.name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Key className="w-5 h-5 text-gray-400" />
+                    </div>
+                  </div>
+                  {formErrors.credentialId && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                      {formErrors.credentialId}
+                    </p>
+                  )}
+                  {credentialsLoading && (
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Carregando credenciais...
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Configurações do Provedor */}
+          {selectedProvider && (
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                  Configurações do Provedor
+                </h2>
+                
+                {selectedProvider.helpUrl && (
+                  <a
+                    href={selectedProvider.helpUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                  >
+                    <div className="flex items-center space-x-1">
+                      <Info className="w-4 h-4" />
+                      <span className="text-sm">Ajuda</span>
+                    </div>
+                  </a>
+                )}
+              </div>
+              
+              {renderSettingsFields()}
+              
+              {formErrors.settings && (
+                <p className="mt-4 text-sm text-red-600 dark:text-red-400">
+                  {formErrors.settings}
+                </p>
+              )}
+            </div>
+          )}
+          
+          {/* Limites e Cotas */}
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              Limites e Cotas
+            </h2>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Limite de Armazenamento (bytes)
+              </label>
+              <input
+                type="number"
+                name="spaceLimit"
+                value={formData.spaceLimit}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                min="0"
+                step="1"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Deixe 0 para sem limite
+              </p>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default StorageConfigForm;
