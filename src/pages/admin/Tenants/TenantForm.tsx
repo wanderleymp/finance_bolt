@@ -629,7 +629,7 @@ const TenantForm: React.FC = () => {
                     </h3>
                     <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
                       Uma pasta com o nome do tenant será criada automaticamente no sistema de armazenamento configurado.
-                      Você pode configurar o armazenamento em "Administração > Armazenamento" após criar o tenant.
+                      Você pode configurar o armazenamento em "Administração &gt; Armazenamento" após criar o tenant.
                     </p>
                   </div>
                 </div>
