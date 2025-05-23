@@ -328,6 +328,9 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ tenantId, onModulesChan
                 <div className="bg-white dark:bg-gray-800 p-6 text-center rounded-lg border border-gray-200 dark:border-gray-700">
                   <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-500 dark:text-gray-400">Nenhum módulo encontrado com os filtros atuais.</p>
+                 <p className="text-sm text-gray-500 dark:text-gray-400">
+                   Os módulos selecionados terão pastas criadas automaticamente no armazenamento configurado.
+                 </p>
                 </div>
               )}
             </div>
