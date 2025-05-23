@@ -191,10 +191,13 @@ const StorageConfigForm: React.FC = () => {
       
       if (!currentProvider) {
         console.error('StorageConfigForm: Provedor não encontrado:', provider);
+        setError(`Provedor "${provider}" não está disponível ou foi removido do sistema. Por favor, selecione outro provedor.`);
+        setSystemCredentials([]);
+        setTenantCredentials([]);
         return;
       }
       
-      const compatibleCredentialProviders = currentProvider.credentialProviders;
+      const compatibleCredentialProviders = currentProvider.credentialProviders || [];
       
       // Buscar credenciais do sistema
       const { data: systemData, error: systemError } = await supabase
@@ -289,6 +292,9 @@ const StorageConfigForm: React.FC = () => {
         message: 'Falha ao carregar credenciais para o provedor selecionado',
         type: 'error'
       });
+      
+      setSystemCredentials([]);
+      setTenantCredentials([]);
     } finally {
       setCredentialsLoading(false);
     }
