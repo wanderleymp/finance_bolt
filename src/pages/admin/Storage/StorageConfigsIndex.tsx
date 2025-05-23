@@ -513,6 +513,12 @@ const StorageConfigsIndex: React.FC = () => {
                           <span className="mx-1.5">•</span>
                           {config.configType === 'system' ? 'Sistema' : 'Tenant'}
                         </p>
+                        {config.settings.basePath && (
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                            <HardDrive size={12} className="mr-1" />
+                            Pasta: {config.settings.basePath}
+                          </p>
+                        )}
                         {config.description && (
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                             {config.description}
