@@ -617,6 +617,23 @@ const TenantForm: React.FC = () => {
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {formatStorageSize(formData.limitearmazenamento)}
               </p>
+              
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <HardDrive className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Armazenamento de Arquivos
+                    </h3>
+                    <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                      Uma pasta com o nome do tenant será criada automaticamente no sistema de armazenamento configurado.
+                      Você pode configurar o armazenamento em "Administração > Armazenamento" após criar o tenant.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div>
