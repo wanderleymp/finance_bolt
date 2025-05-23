@@ -780,6 +780,56 @@ const TenantDetail: React.FC = () => {
               </div>
             </div>
           </div>
+          
+          {/* Armazenamento */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                <HardDrive className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+                Armazenamento
+              </h2>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                    Este tenant tem uma pasta dedicada no sistema de armazenamento para organizar seus arquivos.
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    Cada módulo ativado terá sua própria subpasta para melhor organização dos arquivos.
+                  </p>
+                </div>
+                
+                <Link
+                  to="/admin/storage"
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <HardDrive className="h-4 w-4 mr-1.5" />
+                  Configurar Armazenamento
+                </Link>
+              </div>
+              
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <Info className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Estrutura de Pastas
+                    </h3>
+                    <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                      Uma pasta com o nome <span className="font-mono bg-blue-100 dark:bg-blue-800 px-1 rounded">{tenant.slug || tenant.nome.toLowerCase().replace(/\s+/g, '-')}</span> é criada automaticamente no sistema de armazenamento.
+                    </p>
+                    <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                      Dentro desta pasta, cada módulo terá sua própria subpasta, como <span className="font-mono bg-blue-100 dark:bg-blue-800 px-1 rounded">documentos</span>, <span className="font-mono bg-blue-100 dark:bg-blue-800 px-1 rounded">financeiro</span>, etc.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

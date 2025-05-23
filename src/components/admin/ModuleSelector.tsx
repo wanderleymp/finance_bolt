@@ -328,12 +328,33 @@ const ModuleSelector: React.FC<ModuleSelectorProps> = ({ tenantId, onModulesChan
                 <div className="bg-white dark:bg-gray-800 p-6 text-center rounded-lg border border-gray-200 dark:border-gray-700">
                   <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-500 dark:text-gray-400">Nenhum módulo encontrado com os filtros atuais.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                    Os módulos selecionados terão pastas criadas automaticamente no armazenamento configurado.
+                  </p>
                  <p className="text-sm text-gray-500 dark:text-gray-400">
                    Os módulos selecionados terão pastas criadas automaticamente no armazenamento configurado.
                  </p>
                 </div>
               )}
             </div>
+            
+            {selectedModules.length > 0 && (
+              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <Info className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      Estrutura de Pastas
+                    </h3>
+                    <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                      Para cada módulo selecionado, uma pasta correspondente será criada automaticamente no sistema de armazenamento.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
