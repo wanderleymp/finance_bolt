@@ -421,11 +421,13 @@ const StorageConfigDetail: React.FC = () => {
       case 'azure_blob':
         return <Cloud size={24} />;
       case 'local_filesystem':
+      case 'local':
         return <HardDrive size={24} />;
       case 'supabase_storage':
         return <Database size={24} />;
       default:
-        return <HardDrive size={24} />;
+        // Para qualquer outro provedor, usamos o ícone de nuvem como padrão
+        return <Cloud size={24} />;
     }
   };
 
@@ -667,8 +669,3 @@ const StorageConfigDetail: React.FC = () => {
                     Tamanho Total
                   </h3>
                   <p className="text-xl font-bold text-green-700 dark:text-green-300">
-                    {formatSize(filesStats.totalSize)}
-                  </p>
-                </div>
-                
-                
