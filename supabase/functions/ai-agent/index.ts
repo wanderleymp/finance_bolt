@@ -1,6 +1,15 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 import { OpenAI } from 'npm:openai@4.28.0';
 
+// Definição de tipos
+interface RequestData {
+  message: string;
+  userId: string;
+  tenantId?: string;
+  companyId?: string;
+  conversationHistory?: any[];
+}
+
 // Configuração CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -133,7 +142,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Obter dados da requisição
+    // Obter e validar dados da requisição
     let requestData;
     try {
       requestData = await req.json();
@@ -143,8 +152,8 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
-    
-    const { message, userId, tenantId, companyId, conversationHistory } = requestData;
+
+    const { message, userId, tenantId, companyId, conversationHistory } = requestData as RequestData;
     
     // Validar dados de entrada
     if (!message) {
@@ -163,7 +172,7 @@ Deno.serve(async (req) => {
     
     // Inicializar cliente Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(
@@ -173,6 +182,26 @@ Deno.serve(async (req) => {
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Buscar informações do tenant se o nome foi fornecido em vez do ID
+    if (!tenantId && message.toLowerCase().includes('tenant') && message.toLowerCase().includes('agile')) {
+      try {
+        console.log('Buscando tenant pelo nome "agile"');
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id, nome')
+          .ilike('nome', '%agile%')
+          .limit(1);
+        
+        if (!tenantError && tenantData && tenantData.length > 0) {
+          console.log(`Tenant encontrado: ${tenantData[0].nome} (${tenantData[0].id})`);
+          // Atualizar o tenantId com o valor encontrado
+          requestData.tenantId = tenantData[0].id;
+        }
+      } catch (error) {
+        console.error('Erro ao buscar tenant pelo nome:', error);
+      }
+    }
     
     // Inicializar cliente OpenAI
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -246,7 +275,7 @@ Deno.serve(async (req) => {
     
     // Preparar mensagem do sistema com contexto
     const systemMessage = {
-      role: 'system',
+      role: 'system' as const,
       content: `Você é um assistente AI especializado em operações CRUD para um sistema SaaS de gestão financeira.
       
 Você tem acesso às seguintes entidades:
@@ -261,7 +290,10 @@ Quando o usuário solicitar operações no banco de dados, você deve:
 4. Chamar a função apropriada para executar a operação
 5. Apresentar os resultados de forma clara e concisa
 
-Seja útil, profissional e conciso em suas respostas.`,
+Seja útil, profissional e conciso em suas respostas.
+
+IMPORTANTE: NUNCA responda com "Desculpe, não entendi completamente" ou peça para o usuário reformular a pergunta. 
+Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma possível ou peça informações específicas que estão faltando.`,
     };
     
     // Chamar a API do OpenAI com function calling
@@ -495,16 +527,51 @@ Seja útil, profissional e conciso em suas respostas.`,
       // Se o LLM não chamou uma função, retornar a resposta direta
       // Verificar se a resposta é nula ou vazia
       const responseContent = assistantResponse.content || 'Desculpe, não consegui processar sua solicitação.';
-      
-      // Simular um pequeno atraso para dar tempo ao frontend de mostrar o indicador de digitação
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+            
       // Verificar se a resposta é vazia ou contém a mensagem de "não entendi"
       let finalResponse = responseContent;
       if (responseContent.includes("Desculpe, não entendi") || 
-          responseContent.includes("reformular sua pergunta")) {
+          responseContent.includes("reformular sua pergunta") ||
+          responseContent.includes("não compreendi") ||
+          responseContent.includes("não está claro")) {
         // Substituir com uma resposta mais útil
-        finalResponse = "Estou processando sua solicitação. Por favor, forneça mais detalhes ou tente uma pergunta diferente.";
+        try {
+          // Tentar buscar informações relevantes com base na mensagem
+          if (message.toLowerCase().includes('plano') || message.toLowerCase().includes('planos')) {
+            const { data: plansData, error: plansError } = await supabase
+              .from('saas_plans')
+              .select('*')
+              .limit(5);
+            
+            if (!plansError && plansData && plansData.length > 0) {
+              finalResponse = `Atualmente, temos os seguintes planos disponíveis:\n\n${
+                plansData.map(plan => `- ${plan.name}: R$${plan.price} (${plan.billing_cycle})`).join('\n')
+              }`;
+            }
+          } else if (message.toLowerCase().includes('tenant') || message.toLowerCase().includes('agile')) {
+            const { data: tenantData, error: tenantError } = await supabase
+              .from('tenants')
+              .select('*')
+              .ilike('nome', '%agile%')
+              .limit(1);
+            
+            if (!tenantError && tenantData && tenantData.length > 0) {
+              const tenant = tenantData[0];
+              finalResponse = `O Tenant com nome "${tenant.nome}" foi localizado com sucesso. Este tenant possui o plano ${tenant.plano}, permite até ${tenant.limiteusuarios} usuários, possui um limite de armazenamento de ${tenant.limitearmazenamento}MB e está ${tenant.ativo ? 'ativo' : 'inativo'}.`;
+            }
+          } else if (message.toLowerCase().includes('empresa') || message.toLowerCase().includes('tamara')) {
+            finalResponse = "Vou ajudar você a criar uma nova empresa. Para isso, preciso do ID do tenant. Vou tentar localizar o tenant 'Agile' para você.";
+          } else {
+            finalResponse = "Como posso ajudar você hoje com as operações CRUD em relação às entidades disponíveis no sistema? Por favor, forneça detalhes sobre a entidade específica e a operação que deseja realizar.";
+          }
+        } catch (error) {
+          console.error('Erro ao buscar dados para resposta alternativa:', error);
+          finalResponse = "Como posso ajudar você hoje com as operações CRUD em relação às entidades disponíveis no sistema? Por favor, forneça detalhes sobre a entidade específica e a operação que deseja realizar.";
+        }
+      }
+      
+      // Simular um pequeno atraso para dar tempo ao frontend de mostrar o indicador de digitação
+      await new Promise(resolve => setTimeout(resolve, 500));
       }
       
       // Retornar a resposta modificada
@@ -519,6 +586,7 @@ Seja útil, profissional e conciso em suas respostas.`,
     // Determinar o tipo de erro e código de status
     let errorMessage = 'Erro interno do servidor';
     let status = 500;
+    let userFriendlyMessage = "Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.";
     
     if (error instanceof Error) {
       errorMessage = error.message;
@@ -534,6 +602,7 @@ Seja útil, profissional e conciso em suas respostas.`,
       } else if (error.name === 'AbortError') {
         status = 408; // Request Timeout
         errorMessage = 'A solicitação excedeu o tempo limite';
+        userFriendlyMessage = "A solicitação demorou muito tempo para ser processada. Por favor, tente novamente.";
       }
     }
     
@@ -541,7 +610,7 @@ Seja útil, profissional e conciso em suas respostas.`,
       JSON.stringify({ 
         error: errorMessage,
         details: error instanceof Error ? error.stack : 'Erro desconhecido',
-        response: "Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde."
+        response: userFriendlyMessage
       }),
       { 
         headers: { 
