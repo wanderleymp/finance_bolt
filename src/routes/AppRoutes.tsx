@@ -59,6 +59,21 @@ import EditStorageConfig from '../pages/admin/Storage/EditStorageConfig';
 import StorageConfigDetail from '../pages/admin/Storage/StorageConfigDetail';
 import ModuleStorageMappingsIndex from '../pages/admin/Storage/ModuleStorageMappingsIndex';
 
+// LLM Manager Pages
+import LLMDashboard from '../pages/admin/LLMManager/LLMDashboard';
+import ProviderCredentialsForm from '../pages/admin/LLMManager/ProviderCredentialsForm';
+import TenantLLMSettings from '../pages/admin/LLMManager/TenantLLMSettings';
+import LLMSettings from '../pages/admin/LLMManager/LLMSettings';
+import ProvidersIndex from '../pages/admin/LLMManager/ProvidersIndex';
+import ProviderForm from '../pages/admin/LLMManager/ProviderForm';
+import ModelsIndex from '../pages/admin/LLMManager/ModelsIndex';
+import CredentialsIndex from '../pages/admin/LLMManager/CredentialsIndex';
+
+// AI Agents Pages
+import AgentsIndex from '../pages/admin/AIAgents/AgentsIndex';
+import AgentFactory from '../pages/admin/AIAgents/AgentFactory';
+import KnowledgeBaseIndex from '../pages/admin/AIAgents/KnowledgeBaseIndex';
+
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -236,6 +251,24 @@ const AppRoutes: React.FC = () => {
         <Route path="storage/:id" element={<StorageConfigDetail />} />
         <Route path="storage/:id/edit" element={<EditStorageConfig />} />
         <Route path="storage/mappings" element={<ModuleStorageMappingsIndex />} />
+        
+        {/* LLM Manager Routes */}
+        <Route path="llm" element={<LLMDashboard />} />
+        <Route path="llm/providers" element={<ProvidersIndex />} />
+        <Route path="llm/providers/new" element={<ProviderForm />} />
+        <Route path="llm/providers/:id/edit" element={<ProviderForm />} />
+        <Route path="llm/models" element={<ModelsIndex />} />
+        <Route path="llm/credentials" element={<CredentialsIndex />} />
+        <Route path="llm/credentials/new" element={<ProviderCredentialsForm />} />
+        <Route path="llm/credentials/:id/edit" element={<ProviderCredentialsForm />} />
+        <Route path="llm/providers/:providerId/credentials/new" element={<ProviderCredentialsForm />} />
+        <Route path="llm/tenants/:tenantId/settings" element={<TenantLLMSettings />} />
+        <Route path="llm/settings" element={<LLMSettings />} />
+        
+        {/* AI Agents Routes */}
+        <Route path="ai-agents" element={<AgentsIndex />} />
+        <Route path="ai-agents/new" element={<AgentFactory />} />
+        <Route path="ai-knowledge" element={<KnowledgeBaseIndex />} />
       </Route>
 
       {/* Main App Routes */}

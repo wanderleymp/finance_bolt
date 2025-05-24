@@ -148,10 +148,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Dashboard"
@@ -163,10 +163,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/financeiro"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Financeiro"
@@ -178,10 +178,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/documentos"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Documentos"
@@ -193,10 +193,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/tarefas"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Tarefas"
@@ -208,10 +208,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/relatorios"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Relatórios"
@@ -223,10 +223,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/contatos"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Contatos"
@@ -238,10 +238,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/mensagens"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Mensagens"
@@ -255,10 +255,10 @@ const Sidebar: React.FC = () => {
             <NavLink
               to="/admin"
               className={({ isActive }) =>
-                `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+                `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                   isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                    : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
                 }`
               }
               title="SaaS Admin"
@@ -273,10 +273,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/perfil"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Perfil"
@@ -288,10 +288,10 @@ const Sidebar: React.FC = () => {
           <NavLink
             to="/configuracoes"
             className={({ isActive }) =>
-              `flex items-center px-4 py-2 mt-2 rounded-md transition-colors ${
+              `group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-800 dark:bg-indigo-950 text-white'
+                  : 'text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800'
               }`
             }
             title="Configurações"
@@ -302,7 +302,7 @@ const Sidebar: React.FC = () => {
 
           <button
             onClick={logout}
-            className="flex items-center w-full px-4 py-2 mt-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors text-indigo-100 hover:bg-indigo-600 dark:hover:bg-indigo-800 w-full"
             title="Sair"
           >
             <LogOut size={20} />
