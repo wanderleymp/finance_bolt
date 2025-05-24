@@ -703,7 +703,8 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
               <button
                 onClick={() => setMessage("Ajuda")}
                 disabled={isProcessing || isTyping}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowe
+d"
               >
                 Ajuda
               </button>
@@ -723,7 +724,3 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
 };
 
 export default EnhancedAIAssistant;
-
-export default EnhancedAIAssistant
-
-export default EnhancedAIAssistant
