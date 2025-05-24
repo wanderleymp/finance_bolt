@@ -63,6 +63,11 @@ import ModuleStorageMappingsIndex from '../pages/admin/Storage/ModuleStorageMapp
 import LLMDashboard from '../pages/admin/LLMManager/LLMDashboard';
 import ProviderCredentialsForm from '../pages/admin/LLMManager/ProviderCredentialsForm';
 import TenantLLMSettings from '../pages/admin/LLMManager/TenantLLMSettings';
+import LLMSettings from '../pages/admin/LLMManager/LLMSettings';
+import ProvidersIndex from '../pages/admin/LLMManager/ProvidersIndex';
+import ProviderForm from '../pages/admin/LLMManager/ProviderForm';
+import ModelsIndex from '../pages/admin/LLMManager/ModelsIndex';
+import CredentialsIndex from '../pages/admin/LLMManager/CredentialsIndex';
 
 // AI Agents Pages
 import AgentsIndex from '../pages/admin/AIAgents/AgentsIndex';
@@ -249,10 +254,16 @@ const AppRoutes: React.FC = () => {
         
         {/* LLM Manager Routes */}
         <Route path="llm" element={<LLMDashboard />} />
+        <Route path="llm/providers" element={<ProvidersIndex />} />
+        <Route path="llm/providers/new" element={<ProviderForm />} />
+        <Route path="llm/providers/:id/edit" element={<ProviderForm />} />
+        <Route path="llm/models" element={<ModelsIndex />} />
+        <Route path="llm/credentials" element={<CredentialsIndex />} />
         <Route path="llm/credentials/new" element={<ProviderCredentialsForm />} />
         <Route path="llm/credentials/:id/edit" element={<ProviderCredentialsForm />} />
         <Route path="llm/providers/:providerId/credentials/new" element={<ProviderCredentialsForm />} />
         <Route path="llm/tenants/:tenantId/settings" element={<TenantLLMSettings />} />
+        <Route path="llm/settings" element={<LLMSettings />} />
         
         {/* AI Agents Routes */}
         <Route path="ai-agents" element={<AgentsIndex />} />

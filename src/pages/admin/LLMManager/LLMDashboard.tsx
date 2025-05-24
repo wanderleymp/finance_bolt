@@ -469,6 +469,31 @@ const LLMDashboard: React.FC = () => {
                 </div>
               ))
           )}
+          <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 text-center">
+            <div className="flex justify-center space-x-4">
+              <Link
+                to="/admin/llm/models"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <BrainCircuit className="h-4 w-4 mr-1.5" />
+                Gerenciar Modelos
+              </Link>
+              <Link
+                to="/admin/llm/providers"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <Server className="h-4 w-4 mr-1.5" />
+                Gerenciar Provedores
+              </Link>
+              <Link
+                to="/admin/llm/credentials"
+                className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <Key className="h-4 w-4 mr-1.5" />
+                Gerenciar Credenciais
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -584,5 +609,3 @@ const LLMDashboard: React.FC = () => {
     </div>
   );
 };
-
-export default LLMDashboard;
