@@ -3,20 +3,20 @@ import type { Database } from '../types/supabase';
 
 // Carrega as variáveis de ambiente do Supabase para o cliente admin
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 // Verifica se as variáveis de ambiente estão definidas
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Erro: Variáveis de ambiente do Supabase Admin não estão definidas!');
-  console.error('Para operações administrativas, é necessário configurar a VITE_SUPABASE_SERVICE_ROLE_KEY.');
+  throw new Error(
+    'Erro: Variáveis de ambiente do Supabase Admin não estão definidas!\n' +
+    'Para operações administrativas, é necessário configurar:\n' +
+    '- VITE_SUPABASE_URL\n' +
+    '- VITE_SUPABASE_SERVICE_ROLE_KEY'
+  );
 }
 
 // Cria e exporta o cliente Supabase Admin com a service role key
-// Este cliente ignora as políticas RLS e tem acesso total ao banco de dados
-export const supabaseAdmin = createClient<Database>(
-  supabaseUrl || '',
-  supabaseServiceKey
-);
+export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
 // Função para atualizar um módulo ignorando as políticas RLS
 export const updateModuleBypassRLS = async (
