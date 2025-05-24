@@ -572,7 +572,6 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
       
       // Simular um pequeno atraso para dar tempo ao frontend de mostrar o indicador de digitação
       await new Promise(resolve => setTimeout(resolve, 500));
-      }
       
       // Retornar a resposta modificada
       return new Response(
