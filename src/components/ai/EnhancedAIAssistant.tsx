@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { 
   X, Send, ChevronDown, User, Sparkles, Trash, Database, 
-  AlertCircle, CheckCircle, Loader, BrainCircuit
+  AlertCircle, CheckCircle, Loader, BrainCircuit, Bot
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -92,6 +92,7 @@ const EnhancedAIAssistant: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [initialMessageSent, setInitialMessageSent] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
@@ -102,6 +103,25 @@ const EnhancedAIAssistant: React.FC = () => {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [aiMessages]);
+
+  // Efeito para evitar a mensagem de "não entendi" inicial
+  useEffect(() => {
+    // Verificar se já existe uma mensagem de boas-vindas
+    const hasWelcomeMessage = aiMessages.some(
+      msg => msg.role === 'assistant' && msg.id === 'welcome'
+    );
+    
+    // Se não tiver mensagem de boas-vindas e não tiver enviado a mensagem inicial
+    if (!hasWelcomeMessage && !initialMessageSent) {
+      // Adicionar mensagem de boas-vindas personalizada
+      addAIMessage({
+        role: 'assistant',
+        content: 'Olá! Sou o assistente AI avançado com capacidade de consultar e modificar dados. Como posso ajudar você hoje?',
+      });
+      
+      setInitialMessageSent(true);
+    }
+  }, [aiMessages, addAIMessage, initialMessageSent]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,8 +221,8 @@ const EnhancedAIAssistant: React.FC = () => {
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <div className="flex items-center">
-          <BrainCircuit size={18} className="mr-2" />
-          <h3 className="text-sm font-medium">Assistente AI</h3>
+          <Bot size={18} className="mr-2" />
+          <h3 className="text-sm font-medium">Assistente AI Avançado</h3>
         </div> 
         <div className="flex items-center space-x-2">
           {!isMinimized && (
@@ -268,7 +288,7 @@ const EnhancedAIAssistant: React.FC = () => {
                       <div className="flex items-center mb-1">
                         {msg.role === 'assistant' ? (
                           <div className="flex items-center">
-                            <Sparkles size={14} className="mr-1 text-indigo-500 dark:text-indigo-400" />
+                            <BrainCircuit size={14} className="mr-1 text-indigo-500 dark:text-indigo-400" />
                             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
                               Assistente
                             </span>
@@ -316,7 +336,7 @@ const EnhancedAIAssistant: React.FC = () => {
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={isProcessing ? "Processando..." : "Digite uma mensagem..."}
+                placeholder={isProcessing ? "Processando..." : "Digite uma pergunta ou comando..."}
                 className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 disabled:opacity-70"
                 disabled={isProcessing}
               />

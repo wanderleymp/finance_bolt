@@ -482,7 +482,7 @@ Seja útil, profissional e conciso em suas respostas.`,
       // Retornar a resposta final
       return new Response(
         JSON.stringify({
-          response: secondResponse.choices[0].message.content,
+          response: secondResponse.choices[0].message.content || "Não foi possível processar sua solicitação.",
           functionCall: {
             name: functionName,
             arguments: functionArgs,
@@ -499,9 +499,17 @@ Seja útil, profissional e conciso em suas respostas.`,
       // Simular um pequeno atraso para dar tempo ao frontend de mostrar o indicador de digitação
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Retornar a resposta
-      return new Response( 
-        JSON.stringify({ response: assistantResponse.content }),
+      // Verificar se a resposta é vazia ou contém a mensagem de "não entendi"
+      let finalResponse = responseContent;
+      if (responseContent.includes("Desculpe, não entendi") || 
+          responseContent.includes("reformular sua pergunta")) {
+        // Substituir com uma resposta mais útil
+        finalResponse = "Estou processando sua solicitação. Por favor, forneça mais detalhes ou tente uma pergunta diferente.";
+      }
+      
+      // Retornar a resposta modificada
+      return new Response(
+        JSON.stringify({ response: finalResponse }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
