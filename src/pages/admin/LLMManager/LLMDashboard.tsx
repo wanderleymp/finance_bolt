@@ -609,3 +609,5 @@ const LLMDashboard: React.FC = () => {
     </div>
   );
 };
+
+export default LLMDashboard
