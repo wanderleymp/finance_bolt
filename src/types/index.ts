@@ -354,6 +354,11 @@ export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  functionCall?: {
+    name: string;
+    arguments: any;
+    result?: any;
+  };
 }
 
 export interface AIConversation {
