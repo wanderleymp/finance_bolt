@@ -14,6 +14,8 @@ interface UIContextType {
   toggleSidebar: () => void;
   aiAssistantOpen: boolean;
   toggleAIAssistant: () => void;
+  enhancedAIAssistantOpen: boolean;
+  toggleEnhancedAIAssistant: () => void;
   darkMode: boolean;
   toggleDarkMode: () => void;
   setDarkMode: (isDark: boolean) => void;
@@ -38,6 +40,7 @@ export const useUI = () => {
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiAssistantOpen, setAIAssistantOpen] = useState(false);
+  const [enhancedAIAssistantOpen, setEnhancedAIAssistantOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [aiMessages, setAIMessages] = useState<AIMessage[]>([
@@ -80,6 +83,10 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const toggleAIAssistant = () => {
     setAIAssistantOpen((prev) => !prev);
+  };
+  
+  const toggleEnhancedAIAssistant = () => {
+    setEnhancedAIAssistantOpen((prev) => !prev);
   };
 
   const toggleDarkMode = () => {
@@ -176,6 +183,8 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     toggleSidebar,
     aiAssistantOpen,
     toggleAIAssistant,
+    enhancedAIAssistantOpen,
+    toggleEnhancedAIAssistant,
     darkMode,
     toggleDarkMode,
     setDarkMode: setDarkModeValue,

@@ -1,0 +1,523 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useUI } from '../../contexts/UIContext';
+import { 
+  X, Send, ChevronDown, Bot, User, Sparkles, Trash, 
+  Database, AlertCircle, CheckCircle, Loader, HelpCircle,
+  List, Plus, Search, Filter, ArrowRight
+} from 'lucide-react';
+import { processCommand, useCommandExecutor, ProcessedCommand } from './AICommandProcessor';
+
+// Componente para exibir resultados de operações CRUD
+const CommandResult: React.FC<{
+  result: {
+    success: boolean;
+    data?: any;
+    error?: string;
+    message?: string;
+  };
+  command: ProcessedCommand;
+}> = ({ result, command }) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!result) return null;
+  
+  // Renderizar dados em formato tabular para comandos de leitura/listagem
+  const renderDataTable = () => {
+    if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
+      return <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nenhum dado para exibir</p>;
+    }
+    
+    // Obter cabeçalhos da tabela do primeiro item
+    const headers = Object.keys(result.data[0]);
+    
+    return (
+      <div className="overflow-x-auto mt-2">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead>
+            <tr>
+              {headers.map(header => (
+                <th 
+                  key={header}
+                  className="px-2 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {result.data.map((row: any, rowIndex: number) => (
+              <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                {headers.map(header => (
+                  <td 
+                    key={`${rowIndex}-${header}`}
+                    className="px-2 py-1 whitespace-nowrap text-xs text-gray-700 dark:text-gray-300"
+                  >
+                    {typeof row[header] === 'object' 
+                      ? JSON.stringify(row[header]) 
+                      : String(row[header] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+  
+  return (
+    <div className={`mt-2 p-2 rounded-md ${
+      result.success 
+        ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+        : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+    }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          {result.success ? (
+            <CheckCircle size={16} className="text-green-500 dark:text-green-400 mr-2" />
+          ) : (
+            <AlertCircle size={16} className="text-red-500 dark:text-red-400 mr-2" />
+          )}
+          <span className={`text-sm font-medium ${
+            result.success 
+              ? 'text-green-700 dark:text-green-300' 
+              : 'text-red-700 dark:text-red-300'
+          }`}>
+            {result.message || (result.success ? 'Operação bem-sucedida' : 'Erro na operação')}
+          </span>
+        </div>
+        
+        {result.data && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            {expanded ? (
+              <ChevronDown size={16} className="transform rotate-180" />
+            ) : (
+              <ChevronDown size={16} />
+            )}
+          </button>
+        )}
+      </div>
+      
+      {result.error && (
+        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{result.error}</p>
+      )}
+      
+      {expanded && result.data && (
+        <div className="mt-2">
+          {['read', 'list'].includes(command.type) ? (
+            renderDataTable()
+          ) : (
+            <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto">
+              {JSON.stringify(result.data, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Componente para exibir a interpretação do comando
+const CommandInterpretation: React.FC<{ command: ProcessedCommand }> = ({ command }) => {
+  if (command.type === 'unknown' || command.entity === 'unknown') {
+    return (
+      <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+        <div className="flex items-center">
+          <HelpCircle size={16} className="text-yellow-500 dark:text-yellow-400 mr-2" />
+          <span className="text-sm text-yellow-700 dark:text-yellow-300">
+            Não consegui entender completamente seu comando. Tente ser mais específico.
+          </span>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+      <div className="flex items-center">
+        <Database size={16} className="text-blue-500 dark:text-blue-400 mr-2" />
+        <span className="text-sm text-blue-700 dark:text-blue-300">
+          Interpretei como: {command.type.toUpperCase()} {command.entity}
+          {command.id ? ` com ID ${command.id}` : ''}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// Componente principal do assistente AI aprimorado
+const EnhancedAIAssistant: React.FC = () => {
+  const { aiMessages, addAIMessage, clearAIMessages, toggleAIAssistant } = useUI();
+  const [message, setMessage] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [showEntitySelector, setShowEntitySelector] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatBodyRef = useRef<HTMLDivElement>(null);
+  
+  const { executeCommand } = useCommandExecutor();
+
+  // Rolar para o final das mensagens quando novas mensagens forem adicionadas
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [aiMessages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!message.trim()) return;
+    
+    setIsProcessing(true);
+    
+    // Adicionar mensagem do usuário
+    addAIMessage({
+      role: 'user',
+      content: message,
+    });
+    
+    // Processar o comando
+    const command = processCommand(message);
+    
+    // Limpar o input
+    setMessage('');
+    
+    // Adicionar mensagem de interpretação do sistema
+    addAIMessage({
+      role: 'system',
+      content: JSON.stringify({ 
+        type: 'command_interpretation',
+        command 
+      }),
+    });
+    
+    // Executar o comando se for reconhecido
+    if (command.type !== 'unknown' && command.entity !== 'unknown') {
+      try {
+        const result = await executeCommand(command);
+        
+        // Adicionar resultado como mensagem do sistema
+        addAIMessage({
+          role: 'system',
+          content: JSON.stringify({ 
+            type: 'command_result',
+            result,
+            command
+          }),
+        });
+        
+        // Adicionar resposta do assistente
+        addAIMessage({
+          role: 'assistant',
+          content: result.success 
+            ? result.message || `Operação ${command.type} em ${command.entity} concluída com sucesso.`
+            : `Não foi possível executar a operação: ${result.error || 'Erro desconhecido'}`,
+        });
+      } catch (error) {
+        console.error('Erro ao executar comando:', error);
+        
+        // Adicionar mensagem de erro
+        addAIMessage({
+          role: 'assistant',
+          content: `Ocorreu um erro ao processar seu comando: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        });
+      }
+    } else {
+      // Se o comando não for reconhecido, responder com ajuda
+      addAIMessage({
+        role: 'assistant',
+        content: `Não consegui entender completamente seu comando. Tente ser mais específico ou use um dos seguintes formatos:
+        
+- Para criar: "Crie uma nova transação com descrição 'Pagamento' e valor 100"
+- Para buscar: "Busque a transação com id abc123" ou "Encontre tarefas com status pendente"
+- Para atualizar: "Atualize a tarefa com id abc123 definindo status como concluída"
+- Para excluir: "Exclua a transação com id abc123"
+- Para listar: "Liste todas as tarefas" ou "Mostre todas as transações"
+
+Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
+      });
+    }
+    
+    setIsProcessing(false);
+  };
+
+  const handleQuickCommand = (entity: string, action: string) => {
+    setMessage(`${action} ${entity}`);
+  };
+
+  const clearChat = () => {
+    clearAIMessages();
+  };
+
+  // Renderizar mensagem especial para interpretações de comando e resultados
+  const renderSpecialMessage = (content: string) => {
+    try {
+      const data = JSON.parse(content);
+      
+      if (data.type === 'command_interpretation') {
+        return <CommandInterpretation command={data.command} />;
+      }
+      
+      if (data.type === 'command_result') {
+        return <CommandResult result={data.result} command={data.command} />;
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  return (
+    <div
+      className={`fixed bottom-4 right-4 z-50 flex flex-col w-80 md:w-96 ${
+        isMinimized ? 'h-12' : 'h-[32rem]'
+      } bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 transition-all duration-300`}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 text-white rounded-t-lg cursor-pointer"
+        onClick={() => setIsMinimized(!isMinimized)}
+      >
+        <div className="flex items-center">
+          <Bot size={18} className="mr-2" />
+          <h3 className="text-sm font-medium">Assistente AI com CRUD</h3>
+        </div>
+        <div className="flex items-center space-x-2">
+          {!isMinimized && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                clearChat();
+              }}
+              className="text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-indigo-500"
+              title="Limpar conversa"
+            >
+              <Trash size={16} />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMinimized(!isMinimized);
+            }}
+            className="text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-indigo-500"
+            title={isMinimized ? "Expandir" : "Minimizar"}
+          >
+            <ChevronDown size={18} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleAIAssistant();
+            }}
+            className="text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-indigo-500"
+            title="Fechar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+      
+      {!isMinimized && (
+        <>
+          {/* Entidades disponíveis */}
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Entidades disponíveis
+              </span>
+              <button
+                onClick={() => setShowEntitySelector(!showEntitySelector)}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                {showEntitySelector ? <ChevronDown size={16} className="transform rotate-180" /> : <ChevronDown size={16} />}
+              </button>
+            </div>
+            
+            {showEntitySelector && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {['transaction', 'task', 'user', 'company', 'organization'].map(entity => (
+                  <button
+                    key={entity}
+                    onClick={() => {
+                      setSelectedEntity(entity);
+                      setShowEntitySelector(false);
+                    }}
+                    className={`px-2 py-1 text-xs rounded-md ${
+                      selectedEntity === entity
+                        ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-500'
+                    }`}
+                  >
+                    {entity.charAt(0).toUpperCase() + entity.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {selectedEntity && (
+              <div className="mt-2 flex space-x-2">
+                <button
+                  onClick={() => handleQuickCommand(selectedEntity, 'Criar')}
+                  className="flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-md"
+                >
+                  <Plus size={12} className="mr-1" />
+                  Criar
+                </button>
+                <button
+                  onClick={() => handleQuickCommand(selectedEntity, 'Listar')}
+                  className="flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-md"
+                >
+                  <List size={12} className="mr-1" />
+                  Listar
+                </button>
+                <button
+                  onClick={() => handleQuickCommand(selectedEntity, 'Buscar')}
+                  className="flex items-center px-2 py-1 text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-md"
+                >
+                  <Search size={12} className="mr-1" />
+                  Buscar
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Chat Body */}
+          <div 
+            ref={chatBodyRef}
+            className="flex-1 p-4 overflow-y-auto"
+          >
+            <div className="space-y-4">
+              {aiMessages.map((msg) => {
+                // Verificar se é uma mensagem especial do sistema
+                const isSystemMessage = msg.role === 'system';
+                
+                // Tentar renderizar mensagem especial
+                if (isSystemMessage) {
+                  const specialContent = renderSpecialMessage(msg.content);
+                  if (specialContent) {
+                    return (
+                      <div key={msg.id}>
+                        {specialContent}
+                      </div>
+                    );
+                  }
+                  // Se não for uma mensagem especial reconhecida, não exibir
+                  return null;
+                }
+                
+                // Renderizar mensagens normais
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex ${
+                      msg.role === 'assistant' ? 'justify-start' : 'justify-end'
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-lg px-4 py-2 ${
+                        msg.role === 'assistant'
+                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                          : 'bg-indigo-600 text-white'
+                      }`}
+                    >
+                      <div className="flex items-center mb-1">
+                        {msg.role === 'assistant' ? (
+                          <div className="flex items-center">
+                            <Sparkles size={14} className="mr-1 text-indigo-500 dark:text-indigo-400" />
+                            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                              Assistente
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <User size={14} className="mr-1 text-white/80" />
+                            <span className="text-xs font-medium text-white/80">
+                              Você
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      <div className="text-right mt-1">
+                        <span className="text-xs opacity-70">
+                          {new Date(msg.timestamp).toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+          
+          {/* Input Form */}
+          <form
+            onSubmit={handleSendMessage}
+            className="p-2 border-t border-gray-200 dark:border-gray-700"
+          >
+            <div className="flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 overflow-hidden">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Digite um comando ou pergunta..."
+                className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400"
+                disabled={isProcessing}
+              />
+              <button
+                type="submit"
+                disabled={isProcessing || !message.trim()}
+                className={`p-2 ${
+                  isProcessing || !message.trim()
+                    ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300'
+                }`}
+              >
+                {isProcessing ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}
+              </button>
+            </div>
+            
+            {/* Sugestões de comandos */}
+            <div className="mt-2 flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => setMessage("Listar todas as transações")}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Listar transações
+              </button>
+              <button
+                type="button"
+                onClick={() => setMessage("Criar nova tarefa")}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Criar tarefa
+              </button>
+              <button
+                type="button"
+                onClick={() => setMessage("Ajuda")}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Ajuda
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default EnhancedAIAssistant;

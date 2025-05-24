@@ -3,10 +3,11 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import AIAssistant from '../ai/AIAssistant';
+import EnhancedAIAssistant from '../ai/EnhancedAIAssistant';
 import { useUI } from '../../contexts/UIContext';
 
 const MainLayout: React.FC = () => {
-  const { sidebarOpen, aiAssistantOpen } = useUI();
+  const { sidebarOpen, aiAssistantOpen, enhancedAIAssistantOpen } = useUI();
   const [sidebarHovered, setSidebarHovered] = useState(false);
 
   // Efeito para detectar o hover no sidebar
@@ -51,6 +52,9 @@ const MainLayout: React.FC = () => {
       
       {/* AI Assistant */}
       {aiAssistantOpen && <AIAssistant />}
+      
+      {/* Enhanced AI Assistant with CRUD capabilities */}
+      {enhancedAIAssistantOpen && <EnhancedAIAssistant />}
     </div>
   );
 };

@@ -13,6 +13,7 @@ import {
   Settings, 
   LogOut, 
   MessageSquare,
+  Database,
   Building,
   ChevronDown,
   X
@@ -22,7 +23,7 @@ import { mockNotifications } from '../../data/mockData';
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const { selectedTenant, selectedCompany, selectTenant } = useTenant();
-  const { toggleSidebar, toggleAIAssistant, darkMode, toggleDarkMode } = useUI();
+  const { toggleSidebar, toggleAIAssistant, toggleEnhancedAIAssistant, darkMode, toggleDarkMode } = useUI();
   const navigate = useNavigate();
   
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -208,6 +209,15 @@ const Header: React.FC = () => {
             title="Assistente AI"
           >
             <MessageSquare size={20} />
+          </button>
+
+          {/* Enhanced AI Assistant with CRUD */}
+          <button
+            onClick={toggleEnhancedAIAssistant}
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white focus:outline-none p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="Assistente AI com CRUD"
+          >
+            <Database size={20} />
           </button>
           
           {/* Notifications */}
