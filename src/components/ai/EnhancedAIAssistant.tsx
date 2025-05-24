@@ -723,3 +723,5 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
 };
 
 export default EnhancedAIAssistant;
+
+export default EnhancedAIAssistant
