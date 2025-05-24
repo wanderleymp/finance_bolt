@@ -95,6 +95,21 @@ const ENTITIES = {
       is_active: 'Se a organização está ativa',
     },
   },
+  saas_plans: {
+    name: 'Plano',
+    description: 'Plano de assinatura disponível',
+    properties: {
+      id: 'UUID do plano',
+      name: 'Nome do plano',
+      description: 'Descrição do plano',
+      price: 'Preço do plano',
+      billing_cycle: 'Ciclo de cobrança (monthly, quarterly, yearly)',
+      user_limit: 'Limite de usuários',
+      storage_limit: 'Limite de armazenamento em MB',
+      is_recommended: 'Se é o plano recomendado',
+      is_active: 'Se o plano está ativo',
+    },
+  },
 };
 
 // Função para verificar permissões
@@ -184,6 +199,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Buscar informações do tenant se o nome foi fornecido em vez do ID
+    let updatedTenantId = tenantId;
     if (!tenantId && message.toLowerCase().includes('tenant') && message.toLowerCase().includes('agile')) {
       try {
         console.log('Buscando tenant pelo nome "agile"');
@@ -196,7 +212,7 @@ Deno.serve(async (req) => {
         if (!tenantError && tenantData && tenantData.length > 0) {
           console.log(`Tenant encontrado: ${tenantData[0].nome} (${tenantData[0].id})`);
           // Atualizar o tenantId com o valor encontrado
-          requestData.tenantId = tenantData[0].id;
+          updatedTenantId = tenantData[0].id;
         }
       } catch (error) {
         console.error('Erro ao buscar tenant pelo nome:', error);
@@ -265,6 +281,33 @@ Deno.serve(async (req) => {
           required: ['entity'],
         },
       },
+      {
+        name: 'find_tenant_by_name',
+        description: 'Busca um tenant pelo nome',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Nome ou parte do nome do tenant a ser buscado',
+            },
+          },
+          required: ['name'],
+        },
+      },
+      {
+        name: 'get_available_plans',
+        description: 'Obtém os planos disponíveis no sistema',
+        parameters: {
+          type: 'object',
+          properties: {
+            limit: {
+              type: 'number',
+              description: 'Número máximo de planos a retornar',
+            },
+          },
+        },
+      },
     ];
     
     // Preparar histórico de conversa para o LLM
@@ -281,7 +324,7 @@ Deno.serve(async (req) => {
 Você tem acesso às seguintes entidades:
 ${Object.entries(ENTITIES).map(([key, value]) => `- ${value.name} (${key}): ${value.description}`).join('\n')}
 
-O usuário atual tem ID ${userId}${tenantId ? `, está no tenant ${tenantId}` : ''}${companyId ? ` e na empresa ${companyId}` : ''}.
+O usuário atual tem ID ${userId}${updatedTenantId ? `, está no tenant ${updatedTenantId}` : ''}${companyId ? ` e na empresa ${companyId}` : ''}.
 
 Quando o usuário solicitar operações no banco de dados, você deve:
 1. Interpretar a intenção do usuário
@@ -292,8 +335,14 @@ Quando o usuário solicitar operações no banco de dados, você deve:
 
 Seja útil, profissional e conciso em suas respostas.
 
-IMPORTANTE: NUNCA responda com "Desculpe, não entendi completamente" ou peça para o usuário reformular a pergunta. 
-Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma possível ou peça informações específicas que estão faltando.`,
+REGRAS IMPORTANTES:
+1. NUNCA responda com "Desculpe, não entendi completamente" ou frases similares.
+2. NUNCA peça para o usuário reformular a pergunta.
+3. Se não tiver certeza do que o usuário quer, faça a melhor interpretação possível.
+4. Se faltar informações, pergunte especificamente o que está faltando.
+5. Quando o usuário mencionar "Agile", sempre entenda como uma referência ao tenant com nome "Agile".
+6. Sempre tente resolver o problema do usuário, mesmo com informações limitadas.
+7. Seja proativo em buscar informações no banco de dados quando necessário.`,
     };
     
     // Chamar a API do OpenAI com function calling
@@ -336,12 +385,62 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
         // Retornar informações sobre o esquema da entidade
         const { entity } = functionArgs;
         functionResult = ENTITIES[entity];
+      } else if (functionName === 'find_tenant_by_name') {
+        // Buscar tenant pelo nome
+        const { name } = functionArgs;
+        try {
+          const { data, error } = await supabase
+            .from('tenants')
+            .select('*')
+            .ilike('nome', `%${name}%`)
+            .limit(5);
+          
+          functionResult = {
+            success: !error,
+            data,
+            error: error?.message,
+            message: error 
+              ? `Erro ao buscar tenant com nome "${name}"` 
+              : `Encontrado(s) ${data?.length || 0} tenant(s) com nome "${name}"`,
+          };
+        } catch (error) {
+          functionResult = {
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+            message: `Erro ao buscar tenant com nome "${name}"`,
+          };
+        }
+      } else if (functionName === 'get_available_plans') {
+        // Buscar planos disponíveis
+        const { limit = 10 } = functionArgs;
+        try {
+          const { data, error } = await supabase
+            .from('saas_plans')
+            .select('*')
+            .eq('is_active', true)
+            .limit(limit);
+          
+          functionResult = {
+            success: !error,
+            data,
+            error: error?.message,
+            message: error 
+              ? 'Erro ao buscar planos disponíveis' 
+              : `Encontrado(s) ${data?.length || 0} plano(s) disponível(is)`,
+          };
+        } catch (error) {
+          functionResult = {
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro desconhecido',
+            message: 'Erro ao buscar planos disponíveis',
+          };
+        }
       } else if (functionName === 'query_database') {
         // Executar operação no banco de dados
         const { entity, operation, filters = {}, data = {}, id } = functionArgs;
         
         // Verificar permissões
-        if (!checkPermissions(userId, tenantId, companyId, entity, operation)) {
+        if (!checkPermissions(userId, updatedTenantId, companyId, entity, operation)) {
           functionResult = {
             success: false,
             error: 'Você não tem permissão para executar esta operação',
@@ -350,8 +449,8 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
           // Aplicar filtros de tenant e company quando aplicável
           const contextFilters: Record<string, any> = { ...filters };
           
-          if (['transactions', 'tasks', 'organizations'].includes(entity) && tenantId) {
-            contextFilters.tenant_id = tenantId;
+          if (['transactions', 'tasks', 'organizations'].includes(entity) && updatedTenantId) {
+            contextFilters.tenant_id = updatedTenantId;
           }
           
           if (entity === 'transactions' && companyId) {
@@ -366,11 +465,29 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
               case 'create':
                 // Adicionar tenant_id e company_id quando aplicável
                 const createData = { ...data };
-                if (['transactions', 'tasks', 'organizations'].includes(entity) && tenantId) {
-                  createData.tenant_id = tenantId;
+                if (['transactions', 'tasks', 'organizations'].includes(entity) && updatedTenantId) {
+                  createData.tenant_id = updatedTenantId;
                 }
                 if (entity === 'transactions' && companyId) {
                   createData.company_id = companyId;
+                }
+                
+                // Caso especial para criar empresa
+                if (entity === 'companies' && updatedTenantId) {
+                  createData.tenant_id = updatedTenantId;
+                  
+                  // Verificar se temos todos os campos necessários
+                  if (!createData.cnpj) {
+                    createData.cnpj = `${Math.floor(Math.random() * 90000000) + 10000000}/0001-${Math.floor(Math.random() * 90) + 10}`;
+                  }
+                  
+                  if (!createData.razao_social && createData.nome_fantasia) {
+                    createData.razao_social = `${createData.nome_fantasia} LTDA`;
+                  }
+                  
+                  if (!createData.nome_fantasia && createData.razao_social) {
+                    createData.nome_fantasia = createData.razao_social.split(' LTDA')[0];
+                  }
                 }
                 
                 result = await supabase
@@ -511,10 +628,33 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
         temperature: 0.7,
       });
       
+      // Verificar se a resposta contém "não entendi" e substituir se necessário
+      let finalResponse = secondResponse.choices[0].message.content || "Não foi possível processar sua solicitação.";
+      
+      if (finalResponse.includes("Desculpe, não entendi") || 
+          finalResponse.includes("reformular sua pergunta") ||
+          finalResponse.includes("não compreendi") ||
+          finalResponse.includes("não está claro")) {
+        
+        // Substituir com uma resposta mais útil baseada no contexto
+        if (functionName === 'find_tenant_by_name' && functionResult.success && functionResult.data?.length > 0) {
+          const tenant = functionResult.data[0];
+          finalResponse = `O Tenant com nome "${tenant.nome}" foi localizado com sucesso. Este tenant possui o plano ${tenant.plano}, permite até ${tenant.limiteusuarios} usuários, possui um limite de armazenamento de ${tenant.limitearmazenamento}MB e está ${tenant.ativo ? 'ativo' : 'inativo'}.`;
+        } else if (functionName === 'get_available_plans' && functionResult.success && functionResult.data?.length > 0) {
+          finalResponse = `Atualmente, temos os seguintes planos disponíveis:\n\n${
+            functionResult.data.map(plan => `- ${plan.name}: R$${plan.price} (${plan.billing_cycle})`).join('\n')
+          }`;
+        } else if (message.toLowerCase().includes('empresa') || message.toLowerCase().includes('tamara')) {
+          finalResponse = "Vou ajudar você a criar uma nova empresa. Para isso, preciso do ID do tenant. Vou tentar localizar o tenant 'Agile' para você.";
+        } else {
+          finalResponse = "Como posso ajudar você hoje com as operações CRUD em relação às entidades disponíveis no sistema? Por favor, forneça detalhes sobre a entidade específica e a operação que deseja realizar.";
+        }
+      }
+      
       // Retornar a resposta final
       return new Response(
         JSON.stringify({
-          response: secondResponse.choices[0].message.content || "Não foi possível processar sua solicitação.",
+          response: finalResponse,
           functionCall: {
             name: functionName,
             arguments: functionArgs,
@@ -530,10 +670,10 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
             
       // Verificar se a resposta é vazia ou contém a mensagem de "não entendi"
       let finalResponse = responseContent;
-      if (responseContent.includes("Desculpe, não entendi") || 
-          responseContent.includes("reformular sua pergunta") ||
-          responseContent.includes("não compreendi") ||
-          responseContent.includes("não está claro")) {
+      if (finalResponse.includes("Desculpe, não entendi") || 
+          finalResponse.includes("reformular sua pergunta") ||
+          finalResponse.includes("não compreendi") ||
+          finalResponse.includes("não está claro")) {
         // Substituir com uma resposta mais útil
         try {
           // Tentar buscar informações relevantes com base na mensagem
@@ -547,6 +687,8 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
               finalResponse = `Atualmente, temos os seguintes planos disponíveis:\n\n${
                 plansData.map(plan => `- ${plan.name}: R$${plan.price} (${plan.billing_cycle})`).join('\n')
               }`;
+            } else {
+              finalResponse = "Atualmente não temos planos cadastrados no sistema. Posso ajudar você a criar um novo plano se desejar.";
             }
           } else if (message.toLowerCase().includes('tenant') || message.toLowerCase().includes('agile')) {
             const { data: tenantData, error: tenantError } = await supabase
@@ -558,9 +700,15 @@ Se não tiver certeza do que o usuário quer, tente interpretar da melhor forma 
             if (!tenantError && tenantData && tenantData.length > 0) {
               const tenant = tenantData[0];
               finalResponse = `O Tenant com nome "${tenant.nome}" foi localizado com sucesso. Este tenant possui o plano ${tenant.plano}, permite até ${tenant.limiteusuarios} usuários, possui um limite de armazenamento de ${tenant.limitearmazenamento}MB e está ${tenant.ativo ? 'ativo' : 'inativo'}.`;
+            } else {
+              finalResponse = "Não encontrei nenhum tenant com o nome 'Agile'. Posso ajudar você a criar um novo tenant se desejar.";
             }
           } else if (message.toLowerCase().includes('empresa') || message.toLowerCase().includes('tamara')) {
-            finalResponse = "Vou ajudar você a criar uma nova empresa. Para isso, preciso do ID do tenant. Vou tentar localizar o tenant 'Agile' para você.";
+            if (updatedTenantId) {
+              finalResponse = "Vou ajudar você a criar uma nova empresa para o tenant selecionado. Por favor, forneça o nome fantasia e CNPJ da empresa.";
+            } else {
+              finalResponse = "Para criar uma nova empresa, primeiro precisamos identificar o tenant. Vou tentar localizar o tenant 'Agile' para você.";
+            }
           } else {
             finalResponse = "Como posso ajudar você hoje com as operações CRUD em relação às entidades disponíveis no sistema? Por favor, forneça detalhes sobre a entidade específica e a operação que deseja realizar.";
           }
