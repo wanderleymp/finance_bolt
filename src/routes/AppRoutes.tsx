@@ -64,6 +64,11 @@ import LLMDashboard from '../pages/admin/LLMManager/LLMDashboard';
 import ProviderCredentialsForm from '../pages/admin/LLMManager/ProviderCredentialsForm';
 import TenantLLMSettings from '../pages/admin/LLMManager/TenantLLMSettings';
 
+// AI Agents Pages
+import AgentsIndex from '../pages/admin/AIAgents/AgentsIndex';
+import AgentFactory from '../pages/admin/AIAgents/AgentFactory';
+import KnowledgeBaseIndex from '../pages/admin/AIAgents/KnowledgeBaseIndex';
+
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -248,6 +253,11 @@ const AppRoutes: React.FC = () => {
         <Route path="llm/credentials/:id/edit" element={<ProviderCredentialsForm />} />
         <Route path="llm/providers/:providerId/credentials/new" element={<ProviderCredentialsForm />} />
         <Route path="llm/tenants/:tenantId/settings" element={<TenantLLMSettings />} />
+        
+        {/* AI Agents Routes */}
+        <Route path="ai-agents" element={<AgentsIndex />} />
+        <Route path="ai-agents/new" element={<AgentFactory />} />
+        <Route path="ai-knowledge" element={<KnowledgeBaseIndex />} />
       </Route>
 
       {/* Main App Routes */}
