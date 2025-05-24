@@ -1,7 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 import { OpenAI } from 'npm:openai@4.28.0';
 
-// Verificar se a chave da OpenAI está configurada
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 if (!openaiApiKey) {
   console.error('ERRO: Variável de ambiente OPENAI_API_KEY não está configurada!');
@@ -141,11 +140,17 @@ Deno.serve(async (req) => {
     
     // Validar dados de entrada
     if (!message) {
-      throw new Error('Mensagem não fornecida');
+      return new Response(
+        JSON.stringify({ error: 'Mensagem não fornecida' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
     
     if (!userId) {
-      throw new Error('ID do usuário não fornecido');
+      return new Response(
+        JSON.stringify({ error: 'ID do usuário não fornecido' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
     
     // Inicializar cliente Supabase
@@ -153,14 +158,20 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Variáveis de ambiente do Supabase não configuradas');
+      return new Response(
+        JSON.stringify({ error: 'Variáveis de ambiente do Supabase não configuradas' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Inicializar cliente OpenAI
     if (!openaiApiKey) {
-      throw new Error('Chave de API do OpenAI não configurada');
+      return new Response(
+        JSON.stringify({ error: 'Chave de API do OpenAI não configurada' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
     }
     
     const openai = new OpenAI({
@@ -247,7 +258,11 @@ Seja útil, profissional e conciso em suas respostas.`,
     // Chamar a API do OpenAI com function calling
     const response = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',
-      messages: [systemMessage, ...formattedHistory, { role: 'user', content: message }],
+      messages: [
+        systemMessage, 
+        ...formattedHistory, 
+        { role: 'user', content: message }
+      ],
       functions,
       function_call: 'auto', 
       temperature: 0.7,
@@ -257,8 +272,22 @@ Seja útil, profissional e conciso em suas respostas.`,
     
     // Verificar se o LLM quer chamar uma função
     if (assistantResponse.function_call) {
-      const functionName = assistantResponse.function_call.name;
-      const functionArgs = JSON.parse(assistantResponse.function_call.arguments);
+      let functionName = '';
+      let functionArgs = {};
+      
+      try {
+        functionName = assistantResponse.function_call.name;
+        functionArgs = JSON.parse(assistantResponse.function_call.arguments);
+      } catch (parseError) {
+        console.error('Erro ao analisar argumentos da função:', parseError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Erro ao processar argumentos da função',
+            details: parseError instanceof Error ? parseError.message : 'Erro desconhecido'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
       
       let functionResult;
       
@@ -463,13 +492,32 @@ Seja útil, profissional e conciso em suas respostas.`,
   } catch (error) {
     console.error('Erro no processamento:', error);
     
-    const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor';
-    const status = error instanceof Error && error.message.includes('não fornecid') ? 400 : 500;
+    // Determinar o tipo de erro e código de status apropriado
+    let errorMessage = 'Erro interno do servidor';
+    let status = 500;
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      if (error.message.includes('não fornecid') || 
+          error.message.includes('não configurad') ||
+          error.message.includes('não encontrad')) {
+        status = 400;
+      } else if (error.message.includes('permissão')) {
+        status = 403;
+      } else if (error.message.includes('não encontrado')) {
+        status = 404;
+      } else if (error.name === 'AbortError') {
+        status = 408; // Request Timeout
+        errorMessage = 'A solicitação excedeu o tempo limite';
+      }
+    }
     
     return new Response(
       JSON.stringify({ 
         error: errorMessage,
-        details: error instanceof Error ? error.stack : undefined
+        details: error instanceof Error ? error.stack : 'Erro desconhecido',
+        timestamp: new Date().toISOString()
       }),
       { 
         headers: { 
