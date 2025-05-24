@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { 
-  X, Send, ChevronDown, Bot, User, Sparkles, Trash, 
-  Database, AlertCircle, CheckCircle, Loader, HelpCircle,
-  List, Plus, Search, Filter, ArrowRight
+  X, Send, ChevronDown, Bot, User, Sparkles, Trash, Database, 
+  AlertCircle, CheckCircle, Loader, HelpCircle, List, Plus, 
+  Search, Filter, ArrowRight, BrainCircuit
 } from 'lucide-react';
-import { processCommand, useCommandExecutor, ProcessedCommand } from './AICommandProcessor';
+import { useAuth } from '../../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
+import { supabase } from '../../lib/supabase';
 
 // Componente para exibir resultados de operações CRUD
 const CommandResult: React.FC<{
@@ -15,8 +17,11 @@ const CommandResult: React.FC<{
     error?: string;
     message?: string;
   };
-  command: ProcessedCommand;
-}> = ({ result, command }) => {
+  command?: {
+    entity: string;
+    operation: string;
+  };
+}> = ({ result, command = { entity: '', operation: '' } }) => {
   const [expanded, setExpanded] = useState(false);
   
   if (!result) return null;
@@ -108,7 +113,7 @@ const CommandResult: React.FC<{
       
       {expanded && result.data && (
         <div className="mt-2">
-          {['read', 'list'].includes(command.type) ? (
+          {['read', 'list'].includes(command.operation) ? (
             renderDataTable()
           ) : (
             <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto">
@@ -122,8 +127,13 @@ const CommandResult: React.FC<{
 };
 
 // Componente para exibir a interpretação do comando
-const CommandInterpretation: React.FC<{ command: ProcessedCommand }> = ({ command }) => {
-  if (command.type === 'unknown' || command.entity === 'unknown') {
+const CommandInterpretation: React.FC<{ 
+  functionCall: {
+    name: string;
+    arguments: any;
+  } 
+}> = ({ functionCall }) => {
+  if (!functionCall || !functionCall.arguments) {
     return (
       <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
         <div className="flex items-center">
@@ -138,12 +148,25 @@ const CommandInterpretation: React.FC<{ command: ProcessedCommand }> = ({ comman
   
   return (
     <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-      <div className="flex items-center">
+      <div className="flex items-start">
         <Database size={16} className="text-blue-500 dark:text-blue-400 mr-2" />
-        <span className="text-sm text-blue-700 dark:text-blue-300">
-          Interpretei como: {command.type.toUpperCase()} {command.entity}
-          {command.id ? ` com ID ${command.id}` : ''}
-        </span>
+        <div>
+          <span className="text-sm text-blue-700 dark:text-blue-300">
+            {functionCall.name === 'query_database' ? (
+              <>
+                Interpretei como: {functionCall.arguments.operation.toUpperCase()} {functionCall.arguments.entity}
+                {functionCall.arguments.id ? ` com ID ${functionCall.arguments.id}` : ''}
+              </>
+            ) : (
+              <>Buscando informações sobre {functionCall.arguments.entity}</>
+            )}
+          </span>
+          {functionCall.arguments.filters && Object.keys(functionCall.arguments.filters).length > 0 && (
+            <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+              Filtros: {JSON.stringify(functionCall.arguments.filters)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -151,17 +174,18 @@ const CommandInterpretation: React.FC<{ command: ProcessedCommand }> = ({ comman
 
 // Componente principal do assistente AI aprimorado
 const EnhancedAIAssistant: React.FC = () => {
-  const { aiMessages, addAIMessage, clearAIMessages, toggleAIAssistant } = useUI();
+  const { aiMessages, addAIMessage, clearAIMessages, toggleEnhancedAIAssistant } = useUI();
+  const { user } = useAuth();
+  const { selectedTenant, selectedCompany } = useTenant();
   const [message, setMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [showEntitySelector, setShowEntitySelector] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
-  
-  const { executeCommand } = useCommandExecutor();
 
   // Rolar para o final das mensagens quando novas mensagens forem adicionadas
   useEffect(() => {
@@ -177,74 +201,100 @@ const EnhancedAIAssistant: React.FC = () => {
     
     setIsProcessing(true);
     
-    // Adicionar mensagem do usuário
-    addAIMessage({
+    // Criar mensagem do usuário
+    const userMessage = {
       role: 'user',
       content: message,
-    });
+    };
     
-    // Processar o comando
-    const command = processCommand(message);
+    // Adicionar ao histórico de mensagens
+    addAIMessage(userMessage);
     
-    // Limpar o input
-    setMessage('');
+    // Atualizar histórico de conversa para o LLM
+    const updatedHistory = [...conversationHistory, userMessage];
+    setConversationHistory(updatedHistory);
     
-    // Adicionar mensagem de interpretação do sistema
-    addAIMessage({
-      role: 'system',
-      content: JSON.stringify({ 
-        type: 'command_interpretation',
-        command 
-      }),
-    });
-    
-    // Executar o comando se for reconhecido
-    if (command.type !== 'unknown' && command.entity !== 'unknown') {
-      try {
-        const result = await executeCommand(command);
-        
-        // Adicionar resultado como mensagem do sistema
+    try {
+      // Obter URL da função Edge
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent`;
+      
+      // Preparar cabeçalhos com chave anônima
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+      
+      // Preparar dados para enviar
+      const requestData = {
+        message,
+        userId: user?.id,
+        tenantId: selectedTenant?.id || null,
+        companyId: selectedCompany?.id || null,
+        conversationHistory: updatedHistory,
+      };
+      
+      // Chamar a função Edge
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      // Se houver uma chamada de função, mostrar a interpretação
+      if (result.functionCall) {
         addAIMessage({
           role: 'system',
           content: JSON.stringify({ 
-            type: 'command_result',
-            result,
-            command
+            type: 'command_interpretation',
+            functionCall: result.functionCall
           }),
         });
         
-        // Adicionar resposta do assistente
-        addAIMessage({
-          role: 'assistant',
-          content: result.success 
-            ? result.message || `Operação ${command.type} em ${command.entity} concluída com sucesso.`
-            : `Não foi possível executar a operação: ${result.error || 'Erro desconhecido'}`,
-        });
-      } catch (error) {
-        console.error('Erro ao executar comando:', error);
-        
-        // Adicionar mensagem de erro
-        addAIMessage({
-          role: 'assistant',
-          content: `Ocorreu um erro ao processar seu comando: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        });
+        // Se houver um resultado da função, mostrar
+        if (result.functionCall.result) {
+          addAIMessage({
+            role: 'system',
+            content: JSON.stringify({ 
+              type: 'command_result',
+              result: result.functionCall.result,
+              command: {
+                entity: result.functionCall.arguments.entity,
+                operation: result.functionCall.arguments.operation
+              }
+            }),
+          });
+        }
       }
-    } else {
-      // Se o comando não for reconhecido, responder com ajuda
+      
+      // Adicionar resposta do assistente
+      const assistantMessage = {
+        role: 'assistant',
+        content: result.response || 'Não foi possível processar sua solicitação.',
+      };
+      
+      addAIMessage(assistantMessage);
+      
+      // Atualizar histórico de conversa
+      setConversationHistory([...updatedHistory, assistantMessage]);
+      
+    } catch (error) {
+      console.error('Erro ao processar mensagem:', error);
+      
+      // Adicionar mensagem de erro
       addAIMessage({
         role: 'assistant',
-        content: `Não consegui entender completamente seu comando. Tente ser mais específico ou use um dos seguintes formatos:
-        
-- Para criar: "Crie uma nova transação com descrição 'Pagamento' e valor 100"
-- Para buscar: "Busque a transação com id abc123" ou "Encontre tarefas com status pendente"
-- Para atualizar: "Atualize a tarefa com id abc123 definindo status como concluída"
-- Para excluir: "Exclua a transação com id abc123"
-- Para listar: "Liste todas as tarefas" ou "Mostre todas as transações"
-
-Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
+        content: `Ocorreu um erro ao processar sua mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
       });
     }
     
+    // Limpar o input
+    setMessage('');
     setIsProcessing(false);
   };
 
@@ -254,6 +304,7 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
 
   const clearChat = () => {
     clearAIMessages();
+    setConversationHistory([]);
   };
 
   // Renderizar mensagem especial para interpretações de comando e resultados
@@ -262,7 +313,7 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
       const data = JSON.parse(content);
       
       if (data.type === 'command_interpretation') {
-        return <CommandInterpretation command={data.command} />;
+        return <CommandInterpretation functionCall={data.functionCall} />;
       }
       
       if (data.type === 'command_result') {
@@ -285,9 +336,9 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 text-white rounded-t-lg cursor-pointer"
         onClick={() => setIsMinimized(!isMinimized)}
       >
-        <div className="flex items-center">
-          <Bot size={18} className="mr-2" />
-          <h3 className="text-sm font-medium">Assistente AI com CRUD</h3>
+        <div className="flex items-center space-x-2">
+          <BrainCircuit size={18} />
+          <h3 className="text-sm font-medium">Assistente AI Avançado</h3>
         </div>
         <div className="flex items-center space-x-2">
           {!isMinimized && (
@@ -315,7 +366,7 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
           <button
             onClick={(e) => {
               e.stopPropagation();
-              toggleAIAssistant();
+              toggleEnhancedAIAssistant();
             }}
             className="text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-indigo-500"
             title="Fechar"
@@ -331,7 +382,7 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
           <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Entidades disponíveis
+                Entidades disponíveis para consulta
               </span>
               <button
                 onClick={() => setShowEntitySelector(!showEntitySelector)}
@@ -343,7 +394,7 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
             
             {showEntitySelector && (
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {['transaction', 'task', 'user', 'company', 'organization'].map(entity => (
+                {['transactions', 'tasks', 'users', 'companies', 'organizations', 'tenants'].map(entity => (
                   <button
                     key={entity}
                     onClick={() => {
@@ -356,7 +407,13 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
                         : 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-500'
                     }`}
                   >
-                    {entity.charAt(0).toUpperCase() + entity.slice(1)}
+                    {entity === 'transactions' ? 'Transações' :
+                      entity === 'tasks' ? 'Tarefas' :
+                      entity === 'users' ? 'Usuários' :
+                      entity === 'companies' ? 'Empresas' :
+                      entity === 'organizations' ? 'Organizações' :
+                      entity === 'tenants' ? 'Tenants' :
+                      entity}
                   </button>
                 ))}
               </div>
@@ -365,14 +422,14 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
             {selectedEntity && (
               <div className="mt-2 flex space-x-2">
                 <button
-                  onClick={() => handleQuickCommand(selectedEntity, 'Criar')}
+                  onClick={() => handleQuickCommand(selectedEntity, 'Criar novo')}
                   className="flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-md"
                 >
                   <Plus size={12} className="mr-1" />
                   Criar
                 </button>
                 <button
-                  onClick={() => handleQuickCommand(selectedEntity, 'Listar')}
+                  onClick={() => handleQuickCommand(selectedEntity, 'Listar todos os')}
                   className="flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-md"
                 >
                   <List size={12} className="mr-1" />
@@ -473,7 +530,7 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Digite um comando ou pergunta..."
-                className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400"
+                className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 disabled:opacity-70"
                 disabled={isProcessing}
               />
               <button
@@ -492,25 +549,28 @@ Você também pode digitar "ajuda" para ver todos os comandos disponíveis.`,
             {/* Sugestões de comandos */}
             <div className="mt-2 flex flex-wrap gap-1">
               <button
-                type="button"
                 onClick={() => setMessage("Listar todas as transações")}
                 className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Listar transações
               </button>
               <button
-                type="button"
-                onClick={() => setMessage("Criar nova tarefa")}
+                onClick={() => setMessage("Quais tenants existem no sistema?")}
                 className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
-                Criar tarefa
+                Listar tenants
               </button>
               <button
-                type="button"
                 onClick={() => setMessage("Ajuda")}
                 className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Ajuda
+              </button>
+              <button
+                onClick={() => setMessage("Criar nova tarefa com prioridade alta")}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Criar tarefa
               </button>
             </div>
           </form>
