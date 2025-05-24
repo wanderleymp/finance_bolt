@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
-import { supabase } from '../../lib/supabase';
+import { AIMessage } from '../../types';
 
 // Componente para exibir resultados de operações CRUD
 const CommandResult: React.FC<{
