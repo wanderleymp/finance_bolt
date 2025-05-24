@@ -354,33 +354,37 @@ const ModulesIndex: React.FC = () => {
             {filteredModules.map(module => (
               <div 
                 key={module.id}
-                className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border ${
+                className={`relative bg-white dark:bg-gray-900 rounded-xl shadow-lg border transition-transform duration-200 hover:scale-[1.025] hover:shadow-2xl group overflow-hidden ${
                   module.isCore 
                     ? 'border-green-300 dark:border-green-700' 
-                    : 'border-gray-200 dark:border-gray-700'
+                    : 'border-gray-100 dark:border-gray-800'
                 }`}
               >
-                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
                   <div className="flex items-center">
-                    <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
+                    <div className={`flex-shrink-0 h-14 w-14 rounded-full flex items-center justify-center shadow-sm text-3xl font-bold ${
                       module.isCore 
-                        ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
-                        : 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                        ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-300' 
+                        : 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-200'
                     }`}>
-                      {renderIcon(module.icon || 'package')}
+                      {renderIcon(module.icon || 'package', 28)}
                     </div>
                     <div className="ml-4">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
                         {module.name}
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {module.code}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{module.code}</span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${module.isCore ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{module.isCore ? <Zap size={14} /> : <Package size={14} />}{module.isCore ? 'Essencial' : 'Adicional'}</span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${module.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{module.isActive ? <Check size={14} /> : <X size={14} />}{module.isActive ? 'Ativo' : 'Inativo'}</span>
+                      </div>
                     </div>
                   </div>
                   <button
                     onClick={() => toggleModuleExpansion(module.id)}
-                    className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+                    className="text-gray-400 hover:text-indigo-500 dark:text-gray-500 dark:hover:text-indigo-400 rounded-full p-2 transition"
+                    title={expandedModules[module.id] ? 'Recolher detalhes' : 'Expandir detalhes'}
+                    aria-label={expandedModules[module.id] ? 'Recolher detalhes' : 'Expandir detalhes'}
                   >
                     {expandedModules[module.id] ? (
                       <ChevronUp size={20} />
@@ -430,41 +434,43 @@ const ModulesIndex: React.FC = () => {
                   </div>
                 )}
                 
-                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 flex justify-between border-t border-gray-200 dark:border-gray-700">
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 flex justify-end gap-2 border-t border-gray-100 dark:border-gray-800">
                   <Link
                     to={`/admin/modules/${module.id}/edit`}
-                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex items-center justify-center p-2 rounded-full bg-gray-50 dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-600 transition"
+                    title="Editar"
+                    aria-label="Editar"
                   >
-                    <Edit className="h-3.5 w-3.5 mr-1" />
-                    Editar
+                    <Edit className="w-5 h-5" />
                   </Link>
-                  
                   {deleteConfirmation === module.id ? (
-                    <div className="flex space-x-2">
+                    <>
                       <button
                         onClick={cancelDelete}
-                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-xs font-medium rounded shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none"
+                        className="inline-flex items-center justify-center p-2 rounded-full bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent hover:border-gray-300 dark:hover:border-gray-500 transition"
+                        title="Cancelar"
+                        aria-label="Cancelar"
                       >
-                        <X className="h-3.5 w-3.5 mr-1" />
-                        Cancelar
+                        <X className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleDeleteModule(module.id)}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        className="inline-flex items-center justify-center p-2 rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 border border-transparent hover:border-red-300 dark:hover:border-red-600 transition"
+                        title="Confirmar exclusão"
+                        aria-label="Confirmar exclusão"
                       >
-                        <Check className="h-3.5 w-3.5 mr-1" />
-                        Confirmar
+                        <Check className="w-5 h-5" />
                       </button>
-                    </div>
+                    </>
                   ) : (
                     <button
                       onClick={() => handleDeleteModule(module.id)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      className={`inline-flex items-center justify-center p-2 rounded-full bg-gray-50 dark:bg-gray-700 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 border border-transparent hover:border-red-200 dark:hover:border-red-600 transition ${module.isCore ? 'opacity-40 cursor-not-allowed' : ''}`}
                       disabled={module.isCore}
                       title={module.isCore ? "Módulos essenciais não podem ser excluídos" : "Excluir módulo"}
+                      aria-label={module.isCore ? "Módulos essenciais não podem ser excluídos" : "Excluir módulo"}
                     >
-                      <Trash className="h-3.5 w-3.5 mr-1" />
-                      Excluir
+                      <Trash className="w-5 h-5" />
                     </button>
                   )}
                 </div>
