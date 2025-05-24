@@ -274,11 +274,19 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
       // Obter URL da função Edge
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent`;
       
+      if (!apiUrl) {
+        throw new Error('URL do Supabase não configurada');
+      }
+      
       // Preparar cabeçalhos com chave anônima
       const headers = {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       };
+
+      if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        throw new Error('Chave anônima do Supabase não configurada');
+      }
       
       // Preparar dados para enviar
       const requestData = {
@@ -289,84 +297,111 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
         conversationHistory: updatedHistory,
       };
       
-      // Chamar a função Edge
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestData),
-      });
+      // Chamar a função Edge com timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
       
-      if (!response.ok) {
-        throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      // Se houver uma chamada de função, mostrar a interpretação
-      if (result.functionCall) {
-        // Remover mensagem de processamento
-        setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
-        
-        // Adicionar interpretação do comando
-        addAIMessage({
-          role: 'system',
-          content: JSON.stringify({ 
-            type: 'command_interpretation',
-            functionCall: result.functionCall
-          }),
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestData),
+          signal: controller.signal
         });
         
-        // Pequeno delay para simular processamento
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        clearTimeout(timeout);
         
-        // Se houver um resultado da função, mostrar
-        if (result.functionCall.result) {
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            `Erro na requisição: ${response.status} ${response.statusText}` +
+            (errorData.error ? `\nDetalhes: ${errorData.error}` : '')
+          );
+        }
+        
+        const result = await response.json();
+        
+        // Se houver uma chamada de função, mostrar a interpretação
+        if (result.functionCall) {
+          // Remover mensagem de processamento
+          setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
+          
+          // Adicionar interpretação do comando
           addAIMessage({
             role: 'system',
             content: JSON.stringify({ 
-              type: 'command_result',
-              result: result.functionCall.result,
-              command: {
-                entity: result.functionCall.arguments.entity,
-                operation: result.functionCall.arguments.operation
-              }
+              type: 'command_interpretation',
+              functionCall: result.functionCall
             }),
           });
+          
+          // Pequeno delay para simular processamento
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Se houver um resultado da função, mostrar
+          if (result.functionCall.result) {
+            addAIMessage({
+              role: 'system',
+              content: JSON.stringify({ 
+                type: 'command_result',
+                result: result.functionCall.result,
+                command: {
+                  entity: result.functionCall.arguments.entity,
+                  operation: result.functionCall.arguments.operation
+                }
+              }),
+            });
+          }
         }
+        else {
+          // Remover mensagem de processamento
+          setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
+        }
+        
+        // Adicionar resposta do assistente após um pequeno delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const assistantMessage = {
+          role: 'assistant',
+          content: result.response || 'Não foi possível processar sua solicitação.',
+        };
+        
+        addAIMessage(assistantMessage);
+        
+        // Atualizar histórico de conversa
+        setConversationHistory([...updatedHistory, assistantMessage]);
+        
+      } catch (fetchError) {
+        throw new Error(
+          fetchError instanceof Error 
+            ? `Erro na comunicação com o servidor: ${fetchError.message}`
+            : 'Erro desconhecido na comunicação com o servidor'
+        );
       }
-      else {
-        // Remover mensagem de processamento
-        setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
-      }
-      
-      // Adicionar resposta do assistente após um pequeno delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const assistantMessage = {
-        role: 'assistant',
-        content: result.response || 'Não foi possível processar sua solicitação.',
-      };
-      
-      addAIMessage(assistantMessage);
-      
-      // Atualizar histórico de conversa
-      setConversationHistory([...updatedHistory, assistantMessage]);
       
     } catch (error) {
       console.error('Erro ao processar mensagem:', error);
-      setIsTyping(false);
       
-      // Adicionar mensagem de erro
+      // Remover mensagem de processamento se existir
+      setAIMessages(prev => prev.filter(msg => msg.content === 'processing'));
+      
+      // Adicionar mensagem de erro amigável
       addAIMessage({
         role: 'assistant',
-        content: `Ocorreu um erro ao processar sua mensagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        content: `Desculpe, ocorreu um erro ao processar sua mensagem. ${
+          error instanceof Error 
+            ? error.message.includes('configurada')
+              ? 'Por favor, verifique as configurações do sistema.'
+              : error.message
+            : 'Tente novamente mais tarde.'
+        }`,
       });
+    } finally {
+      // Limpar o input e estados
+      setMessage('');
+      setIsProcessing(false);
+      setIsTyping(false);
     }
-    
-    // Limpar o input
-    setMessage('');
-    setIsProcessing(false);
-    setIsTyping(false);
   };
 
   // Função para limpar mensagens de processamento
@@ -675,7 +710,7 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
               <button
                 onClick={() => setMessage("Criar nova tarefa com prioridade alta")}
                 disabled={isProcessing || isTyping}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700  dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Criar tarefa
               </button>
