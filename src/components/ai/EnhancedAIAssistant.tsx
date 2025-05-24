@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { 
   X, Send, ChevronDown, Bot, User, Sparkles, Trash, Database, 
-  AlertCircle, CheckCircle, Loader2, HelpCircle, List, Plus, 
+  AlertCircle, CheckCircle, Loader, HelpCircle, List, Plus, 
   Search, Filter, ArrowRight, BrainCircuit, Info
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -198,7 +198,7 @@ const EnhancedAIAssistant: React.FC = () => {
   const [showEntitySelector, setShowEntitySelector] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
-  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [initialized, setInitialized] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -245,42 +245,31 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
     // Mostrar indicador de digitação imediatamente
     setIsTyping(true);
     
-    // Criar e adicionar mensagem do usuário
-    const userMessageId = `user-${uuidv4()}`;
-    const userMessage: AIMessage = {
-      id: userMessageId,
+    // Criar mensagem do usuário
+    const userMessage: Omit<AIMessage, 'id' | 'timestamp'> = {
       role: 'user',
       content: message,
-      timestamp: new Date().toISOString(),
     };
     
-    // Adicionar mensagem do usuário diretamente ao estado
-    const newAIMessage = (msg: AIMessage) => {
-      aiMessages.push(msg);
-      // Forçar atualização da UI
-      setIsTyping(prev => prev);
-    };
-    
-    newAIMessage(userMessage);
+    // Adicionar ao histórico de mensagens
+    addAIMessage(userMessage);
 
     // Atualizar histórico de conversa para o LLM
-    const updatedHistory = [...conversationHistory, {
-      role: userMessage.role,
-      content: userMessage.content
-    }];
+    const updatedHistory = [...conversationHistory, userMessage];
     setConversationHistory(updatedHistory);
     
     try {
-      // Adicionar indicador de digitação como mensagem temporária
-      const processingMessageId = `typing-${uuidv4()}`;
-      const typingMessage: AIMessage = {
+      // Pequeno delay para simular processamento
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Adicionar mensagem temporária de processamento
+      const processingMessageId = `processing-${uuidv4()}`;
+      addAIMessage({
         id: processingMessageId,
         role: 'system',
         content: 'processing',
         timestamp: new Date().toISOString(),
-      };
-      
-      newAIMessage(typingMessage);
+      });
       
       // Obter URL da função Edge
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent`;
@@ -310,7 +299,7 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
       
       // Chamar a função Edge com timeout
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000); // 60 segundos timeout
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
       
       try {
         const response = await fetch(apiUrl, {
@@ -334,31 +323,24 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
         
         // Se houver uma chamada de função, mostrar a interpretação
         if (result.functionCall) {
-          // Remover indicador de digitação
-          const updatedMessages = aiMessages.filter(msg => msg.id !== processingMessageId);
-          while (aiMessages.length > 0) aiMessages.pop();
-          updatedMessages.forEach(msg => aiMessages.push(msg));
+          // Remover mensagem de processamento
+          setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
           
           // Adicionar interpretação do comando
-          const interpretationMessage: AIMessage = {
-            id: `interpretation-${uuidv4()}`,
+          addAIMessage({
             role: 'system',
             content: JSON.stringify({ 
               type: 'command_interpretation',
               functionCall: result.functionCall
             }),
-            timestamp: new Date().toISOString(),
-          };
-          
-          newAIMessage(interpretationMessage);
+          });
           
           // Pequeno delay para simular processamento
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Se houver um resultado da função, mostrar
           if (result.functionCall.result) {
-            const resultMessage: AIMessage = {
-              id: `result-${uuidv4()}`,
+            addAIMessage({
               role: 'system',
               content: JSON.stringify({ 
                 type: 'command_result',
@@ -368,36 +350,26 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
                   operation: result.functionCall.arguments.operation
                 }
               }),
-              timestamp: new Date().toISOString(),
-            };
-            
-            newAIMessage(resultMessage);
+            });
           }
         }
         else {
-          // Remover indicador de digitação
-          const updatedMessages = aiMessages.filter(msg => msg.id !== processingMessageId);
-          while (aiMessages.length > 0) aiMessages.pop();
-          updatedMessages.forEach(msg => aiMessages.push(msg));
+          // Remover mensagem de processamento
+          setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
         }
         
         // Adicionar resposta do assistente após um pequeno delay
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        const assistantMessage: AIMessage = {
-          id: `assistant-${uuidv4()}`,
+        const assistantMessage = {
           role: 'assistant',
           content: result.response || 'Não foi possível processar sua solicitação.',
-          timestamp: new Date().toISOString(),
         };
         
-        newAIMessage(assistantMessage);
+        addAIMessage(assistantMessage);
         
         // Atualizar histórico de conversa
-        setConversationHistory([...updatedHistory, {
-          role: assistantMessage.role,
-          content: assistantMessage.content
-        }]);
+        setConversationHistory([...updatedHistory, assistantMessage]);
         
       } catch (fetchError) {
         throw new Error(
@@ -410,14 +382,11 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
     } catch (error) {
       console.error('Erro ao processar mensagem:', error);
       
-      // Remover indicador de digitação
-      const updatedMessages = aiMessages.filter(msg => msg.content !== 'processing');
-      while (aiMessages.length > 0) aiMessages.pop();
-      updatedMessages.forEach(msg => aiMessages.push(msg));
+      // Remover mensagem de processamento se existir
+      setAIMessages(prev => prev.filter(msg => msg.content === 'processing'));
       
       // Adicionar mensagem de erro amigável
-      const errorMessage: AIMessage = {
-        id: `error-${uuidv4()}`,
+      addAIMessage({
         role: 'assistant',
         content: `Desculpe, ocorreu um erro ao processar sua mensagem. ${
           error instanceof Error 
@@ -426,10 +395,7 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
               : error.message
             : 'Tente novamente mais tarde.'
         }`,
-        timestamp: new Date().toISOString(),
-      };
-      
-      newAIMessage(errorMessage);
+      });
     } finally {
       // Limpar o input e estados
       setMessage('');
@@ -714,7 +680,7 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
                     : 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300'
                 }`}
               >
-                {isProcessing ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                {isProcessing ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}
               </button>
             </div>
             
@@ -723,4 +689,41 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
               <button
                 onClick={() => setMessage("Listar todas as transações")}
                 disabled={isProcessing || isTyping}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Listar transações
+              </button>
+              <button
+                onClick={() => setMessage("Quais tenants existem no sistema?")}
+                disabled={isProcessing || isTyping}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Listar tenants
+              </button>
+              <button
+                onClick={() => setMessage("Ajuda")}
+                disabled={isProcessing || isTyping}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Ajuda
+              </button>
+              <button
+                onClick={() => setMessage("Criar nova tarefa com prioridade alta")}
+                disabled={isProcessing || isTyping}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700  dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Criar tarefa
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default EnhancedAIAssistant;
+
+export default EnhancedAIAssistant
+
+export default EnhancedAIAssistant
