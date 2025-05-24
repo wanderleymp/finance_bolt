@@ -4,7 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { UIProvider } from './contexts/UIContext';
 import { TenantProvider } from './contexts/TenantContext';
 import AppRoutes from './routes/AppRoutes';
-import { Toaster } from './components/ui/Toaster';
+import Toaster from './components/ui/Toaster';
 import { supabase } from './lib/supabase';
 import DatabaseConfigWarning from './components/DatabaseConfigWarning';
 
@@ -16,7 +16,7 @@ function App() {
   // Verificar se as credenciais do Supabase estão configuradas
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const useSupabaseAuth = import.meta.env.VITE_USE_SUPABASE_AUTH === 'true';
+  const useSupabaseAuth = import.meta.env.VITE_USE_SUPABASE_AUTH === 'true' || false;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return <DatabaseConfigWarning />;

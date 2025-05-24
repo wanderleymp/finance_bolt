@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { 
   X, Send, ChevronDown, User, Sparkles, Trash, Database, 
-  AlertCircle, CheckCircle, Loader, BrainCircuit, Bot
+  AlertCircle, CheckCircle, Loader, BrainCircuit, Bot, Info
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -92,7 +92,7 @@ const EnhancedAIAssistant: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [initialMessageSent, setInitialMessageSent] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<AIMessage[]>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
@@ -104,24 +104,30 @@ const EnhancedAIAssistant: React.FC = () => {
     }
   }, [aiMessages]);
 
-  // Efeito para evitar a mensagem de "não entendi" inicial
+  // Efeito para adicionar mensagem de boas-vindas personalizada
   useEffect(() => {
-    // Verificar se já existe uma mensagem de boas-vindas
-    const hasWelcomeMessage = aiMessages.some(
-      msg => msg.role === 'assistant' && msg.id === 'welcome'
-    );
+    // Limpar mensagens existentes e adicionar nova mensagem de boas-vindas
+    clearAIMessages();
     
-    // Se não tiver mensagem de boas-vindas e não tiver enviado a mensagem inicial
-    if (!hasWelcomeMessage && !initialMessageSent) {
-      // Adicionar mensagem de boas-vindas personalizada
-      addAIMessage({
-        role: 'assistant',
-        content: 'Olá! Sou o assistente AI avançado com capacidade de consultar e modificar dados. Como posso ajudar você hoje?',
-      });
-      
-      setInitialMessageSent(true);
+    // Adicionar mensagem de boas-vindas personalizada
+    const welcomeMessage: AIMessage = {
+      id: 'welcome',
+      role: 'assistant',
+      content: `Olá! Sou o assistente AI avançado com capacidade de consultar e modificar dados do sistema.
+
+Posso ajudar você com:
+- Consultar informações sobre tenants, empresas, transações e mais
+- Criar novos registros no sistema
+- Atualizar informações existentes
+- Excluir registros quando necessário
+
+Como posso ajudar você hoje?`,
+      timestamp: new Date().toISOString(),
     }
-  }, [aiMessages, addAIMessage, initialMessageSent]);
+    
+    // Adicionar diretamente ao estado para evitar duplicação
+    setConversationHistory([welcomeMessage]);
+  }, [clearAIMessages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +145,7 @@ const EnhancedAIAssistant: React.FC = () => {
     
     // Adicionar ao histórico de mensagens
     addAIMessage(userMessage);
+    setConversationHistory(prev => [...prev, {...userMessage, id: uuidv4(), timestamp: new Date().toISOString()}]);
     
     try {
       // Obter URL da função Edge
@@ -163,6 +170,7 @@ const EnhancedAIAssistant: React.FC = () => {
         message,
         userId: user?.id,
         tenantId: selectedTenant?.id || null,
+        conversationHistory: conversationHistory.slice(-10), // Enviar as últimas 10 mensagens como contexto
         companyId: selectedCompany?.id || null,
       };
       
@@ -182,6 +190,7 @@ const EnhancedAIAssistant: React.FC = () => {
       // Simular digitação
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // Adicionar resposta do assistente ao histórico
       // Adicionar resposta do assistente
       addAIMessage({
         role: 'assistant',
@@ -220,9 +229,10 @@ const EnhancedAIAssistant: React.FC = () => {
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 text-white rounded-t-lg cursor-pointer"
         onClick={() => setIsMinimized(!isMinimized)}
       >
-        <div className="flex items-center">
+        <div className="flex items-center space-x-1">
           <Bot size={18} className="mr-2" />
-          <h3 className="text-sm font-medium">Assistente AI Avançado</h3>
+          <h3 className="text-sm font-medium">Assistente AI com CRUD</h3>
+          <div className="bg-indigo-500 rounded-full px-2 py-0.5 text-xs">Beta</div>
         </div> 
         <div className="flex items-center space-x-2">
           {!isMinimized && (
@@ -266,10 +276,10 @@ const EnhancedAIAssistant: React.FC = () => {
           <div 
             ref={chatBodyRef}
             className="flex-1 p-4 overflow-y-auto"
-            style={{ scrollBehavior: 'smooth' }}
+            style={{ scrollBehavior: 'smooth', overscrollBehavior: 'contain' }}
           >
             <div className="space-y-4">
-              {aiMessages.map((msg) => {
+              {conversationHistory.length > 0 ? conversationHistory.map((msg) => {
                 // Renderizar mensagens normais
                 return (
                   <div
@@ -288,9 +298,9 @@ const EnhancedAIAssistant: React.FC = () => {
                       <div className="flex items-center mb-1">
                         {msg.role === 'assistant' ? (
                           <div className="flex items-center">
-                            <BrainCircuit size={14} className="mr-1 text-indigo-500 dark:text-indigo-400" />
+                            <BrainCircuit size={14} className="mr-1.5 text-indigo-500 dark:text-indigo-400" />
                             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                              Assistente
+                              Assistente CRUD
                             </span>
                           </div>
                         ) : (
@@ -314,7 +324,12 @@ const EnhancedAIAssistant: React.FC = () => {
                     </div>
                   </div>
                 );
-              })}
+              }) : (
+                <div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                  <Info size={48} className="mb-4 opacity-50" />
+                  <p className="text-center">Nenhuma mensagem ainda. Comece uma conversa!</p>
+                </div>
+              )}
               {isTyping && (
                 <div className="flex justify-start">
                   <div className="max-w-[85%] rounded-lg px-4 py-2 bg-gray-100 dark:bg-gray-700">
@@ -336,7 +351,7 @@ const EnhancedAIAssistant: React.FC = () => {
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={isProcessing ? "Processando..." : "Digite uma pergunta ou comando..."}
+                placeholder={isProcessing ? "Processando..." : "Pergunte sobre tenants, empresas ou crie novos registros..."}
                 className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 disabled:opacity-70"
                 disabled={isProcessing}
               />
