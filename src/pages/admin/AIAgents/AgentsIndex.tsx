@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AdminRedirect from '../../../components/admin/AdminRedirect';
-import { 
-  Plus, Search, Filter, Edit, Trash, Eye, 
-  BrainCircuit, MessageCircle, Tool, Database, 
-  CheckCircle, AlertTriangle, Check, X, Settings
-} from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash, Eye, BrainCircuit, MessageCircle, PenTool as Tool, Database, CheckCircle, AlertTriangle, Check, X, Settings } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useUI } from '../../../contexts/UIContext';
 import { AIAgent } from '../../../types';
