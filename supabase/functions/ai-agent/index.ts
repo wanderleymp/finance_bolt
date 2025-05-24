@@ -1,11 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 import { OpenAI } from 'npm:openai@4.28.0';
 
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-if (!openaiApiKey) {
-  console.error('ERRO: Variável de ambiente OPENAI_API_KEY não está configurada!');
-}
-
 // Configuração CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -131,12 +126,25 @@ Deno.serve(async (req) => {
   try {
     // Validar Content-Type
     const contentType = req.headers.get('content-type');
-    if (!contentType?.includes('application/json')) {
-      throw new Error('Content-Type deve ser application/json');
+    if (contentType && !contentType.includes('application/json')) {
+      return new Response(
+        JSON.stringify({ error: 'Content-Type deve ser application/json' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
     // Obter dados da requisição
-    const { message, userId, tenantId, companyId, conversationHistory } = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: 'Falha ao processar JSON da requisição' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    const { message, userId, tenantId, companyId, conversationHistory } = requestData;
     
     // Validar dados de entrada
     if (!message) {
@@ -167,6 +175,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Inicializar cliente OpenAI
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ error: 'Chave de API do OpenAI não configurada' }),
@@ -257,7 +266,7 @@ Seja útil, profissional e conciso em suas respostas.`,
     
     // Chamar a API do OpenAI com function calling
     const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-3.5-turbo',
       messages: [
         systemMessage, 
         ...formattedHistory, 
@@ -455,7 +464,7 @@ Seja útil, profissional e conciso em suas respostas.`,
       
       // Chamar novamente o LLM para formatar a resposta com base no resultado da função
       const secondResponse = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-3.5-turbo',
         messages: [
           systemMessage,
           ...formattedHistory, 
@@ -484,7 +493,14 @@ Seja útil, profissional e conciso em suas respostas.`,
       );
     } else {
       // Se o LLM não chamou uma função, retornar a resposta direta
-      return new Response(
+      // Verificar se a resposta é nula ou vazia
+      const responseContent = assistantResponse.content || 'Desculpe, não consegui processar sua solicitação.';
+      
+      // Simular um pequeno atraso para dar tempo ao frontend de mostrar o indicador de digitação
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Retornar a resposta
+      return new Response( 
         JSON.stringify({ response: assistantResponse.content }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -492,7 +508,7 @@ Seja útil, profissional e conciso em suas respostas.`,
   } catch (error) {
     console.error('Erro no processamento:', error);
     
-    // Determinar o tipo de erro e código de status apropriado
+    // Determinar o tipo de erro e código de status
     let errorMessage = 'Erro interno do servidor';
     let status = 500;
     
@@ -517,7 +533,7 @@ Seja útil, profissional e conciso em suas respostas.`,
       JSON.stringify({ 
         error: errorMessage,
         details: error instanceof Error ? error.stack : 'Erro desconhecido',
-        timestamp: new Date().toISOString()
+        response: "Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde."
       }),
       { 
         headers: { 

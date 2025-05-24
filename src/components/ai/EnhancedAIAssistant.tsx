@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUI } from '../../contexts/UIContext';
 import { 
-  X, Send, ChevronDown, Bot, User, Sparkles, Trash, Database, 
-  AlertCircle, CheckCircle, Loader, HelpCircle, List, Plus, 
-  Search, Filter, ArrowRight, BrainCircuit, Info
+  X, Send, ChevronDown, User, Sparkles, Trash, Database, 
+  AlertCircle, CheckCircle, Loader, BrainCircuit
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
@@ -40,51 +39,6 @@ const CommandResult: React.FC<{
   const [expanded, setExpanded] = useState(false);
   
   if (!result) return null;
-  
-  // Renderizar dados em formato tabular para comandos de leitura/listagem
-  const renderDataTable = () => {
-    if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
-      return <p className="text-sm text-gray-500 dark:text-gray-400 italic">Nenhum dado para exibir</p>;
-    }
-    
-    // Obter cabeçalhos da tabela do primeiro item
-    const headers = Object.keys(result.data[0]);
-    
-    return (
-      <div className="overflow-x-auto mt-2">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead>
-            <tr>
-              {headers.map(header => (
-                <th 
-                  key={header}
-                  className="px-2 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {result.data.map((row: any, rowIndex: number) => (
-              <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                {headers.map(header => (
-                  <td 
-                    key={`${rowIndex}-${header}`}
-                    className="px-2 py-1 whitespace-nowrap text-xs text-gray-700 dark:text-gray-300"
-                  >
-                    {typeof row[header] === 'object' 
-                      ? JSON.stringify(row[header]) 
-                      : String(row[header] ?? '')}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
   
   return (
     <div className={`mt-2 p-2 rounded-md ${
@@ -125,64 +79,6 @@ const CommandResult: React.FC<{
       {result.error && (
         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{result.error}</p>
       )}
-      
-      {expanded && result.data && (
-        <div className="mt-2">
-          {['read', 'list'].includes(command.operation) ? (
-            renderDataTable()
-          ) : (
-            <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto">
-              {JSON.stringify(result.data, null, 2)}
-            </pre>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Componente para exibir a interpretação do comando
-const CommandInterpretation: React.FC<{ 
-  functionCall: {
-    name: string;
-    arguments: any;
-  } 
-}> = ({ functionCall }) => {
-  if (!functionCall || !functionCall.arguments) {
-    return (
-      <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-        <div className="flex items-center">
-          <HelpCircle size={16} className="text-yellow-500 dark:text-yellow-400 mr-2" />
-          <span className="text-sm text-yellow-700 dark:text-yellow-300">
-            Não consegui entender completamente seu comando. Tente ser mais específico.
-          </span>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-      <div className="flex items-start">
-        <Database size={16} className="text-blue-500 dark:text-blue-400 mr-2" />
-        <div>
-          <span className="text-sm text-blue-700 dark:text-blue-300">
-            {functionCall.name === 'query_database' ? (
-              <>
-                Interpretei como: {functionCall.arguments.operation.toUpperCase()} {functionCall.arguments.entity}
-                {functionCall.arguments.id ? ` com ID ${functionCall.arguments.id}` : ''}
-              </>
-            ) : (
-              <>Buscando informações sobre {functionCall.arguments.entity}</>
-            )}
-          </span>
-          {functionCall.arguments.filters && Object.keys(functionCall.arguments.filters).length > 0 && (
-            <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-              Filtros: {JSON.stringify(functionCall.arguments.filters)}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
@@ -195,38 +91,10 @@ const EnhancedAIAssistant: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [showEntitySelector, setShowEntitySelector] = useState(false);
-  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
-  const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [initialized, setInitialized] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
-
-  // Mensagem de boas-vindas inicial
-  useEffect(() => {
-    if (!initialized) {
-      // Limpar mensagens anteriores
-      clearAIMessages();
-      
-      // Adicionar mensagem de boas-vindas
-      addAIMessage({
-        role: 'assistant',
-        content: `Olá! Sou o assistente AI avançado com capacidades de consulta ao banco de dados.
-
-Posso ajudar você a:
-
-• Listar dados (ex: "listar todas as transações")
-• Criar registros (ex: "criar nova tarefa")
-• Buscar informações (ex: "buscar tenant com id X")
-• Atualizar dados (ex: "atualizar usuário com id X")
-• Excluir registros (ex: "excluir transação com id X")
-
-Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
-      });
-    }
-  }, [initialized, addAIMessage, clearAIMessages]);
 
   // Rolar para o final das mensagens quando novas mensagens forem adicionadas
   useEffect(() => {
@@ -241,8 +109,6 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
     if (!message.trim()) return;
     
     setIsProcessing(true);
-    
-    // Mostrar indicador de digitação imediatamente
     setIsTyping(true);
     
     // Criar mensagem do usuário
@@ -253,24 +119,8 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
     
     // Adicionar ao histórico de mensagens
     addAIMessage(userMessage);
-
-    // Atualizar histórico de conversa para o LLM
-    const updatedHistory = [...conversationHistory, userMessage];
-    setConversationHistory(updatedHistory);
     
     try {
-      // Pequeno delay para simular processamento
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Adicionar mensagem temporária de processamento
-      const processingMessageId = `processing-${uuidv4()}`;
-      addAIMessage({
-        id: processingMessageId,
-        role: 'system',
-        content: 'processing',
-        timestamp: new Date().toISOString(),
-      });
-      
       // Obter URL da função Edge
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent`;
       
@@ -294,106 +144,38 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
         userId: user?.id,
         tenantId: selectedTenant?.id || null,
         companyId: selectedCompany?.id || null,
-        conversationHistory: updatedHistory,
       };
       
-      // Chamar a função Edge com timeout
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout
+      // Chamar a função Edge
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestData)
+      });
       
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(requestData),
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeout);
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            `Erro na requisição: ${response.status} ${response.statusText}` +
-            (errorData.error ? `\nDetalhes: ${errorData.error}` : '')
-          );
-        }
-        
-        const result = await response.json();
-        
-        // Se houver uma chamada de função, mostrar a interpretação
-        if (result.functionCall) {
-          // Remover mensagem de processamento
-          setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
-          
-          // Adicionar interpretação do comando
-          addAIMessage({
-            role: 'system',
-            content: JSON.stringify({ 
-              type: 'command_interpretation',
-              functionCall: result.functionCall
-            }),
-          });
-          
-          // Pequeno delay para simular processamento
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Se houver um resultado da função, mostrar
-          if (result.functionCall.result) {
-            addAIMessage({
-              role: 'system',
-              content: JSON.stringify({ 
-                type: 'command_result',
-                result: result.functionCall.result,
-                command: {
-                  entity: result.functionCall.arguments.entity,
-                  operation: result.functionCall.arguments.operation
-                }
-              }),
-            });
-          }
-        }
-        else {
-          // Remover mensagem de processamento
-          setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
-        }
-        
-        // Adicionar resposta do assistente após um pequeno delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const assistantMessage = {
-          role: 'assistant',
-          content: result.response || 'Não foi possível processar sua solicitação.',
-        };
-        
-        addAIMessage(assistantMessage);
-        
-        // Atualizar histórico de conversa
-        setConversationHistory([...updatedHistory, assistantMessage]);
-        
-      } catch (fetchError) {
-        throw new Error(
-          fetchError instanceof Error 
-            ? `Erro na comunicação com o servidor: ${fetchError.message}`
-            : 'Erro desconhecido na comunicação com o servidor'
-        );
+      if (!response.ok) {
+        throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
       }
+      
+      const result = await response.json();
+      
+      // Simular digitação
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Adicionar resposta do assistente
+      addAIMessage({
+        role: 'assistant',
+        content: result.response || 'Não foi possível processar sua solicitação.',
+      });
       
     } catch (error) {
       console.error('Erro ao processar mensagem:', error);
-      
-      // Remover mensagem de processamento se existir
-      setAIMessages(prev => prev.filter(msg => msg.content === 'processing'));
       
       // Adicionar mensagem de erro amigável
       addAIMessage({
         role: 'assistant',
         content: `Desculpe, ocorreu um erro ao processar sua mensagem. ${
-          error instanceof Error 
-            ? error.message.includes('configurada')
-              ? 'Por favor, verifique as configurações do sistema.'
-              : error.message
-            : 'Tente novamente mais tarde.'
+          error instanceof Error ? error.message : 'Tente novamente mais tarde.'
         }`,
       });
     } finally {
@@ -404,55 +186,14 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
     }
   };
 
-  // Função para limpar mensagens de processamento
-  const setAIMessages = (updater: (prev: AIMessage[]) => AIMessage[]) => {
-    // Esta função é um mock para simular a atualização das mensagens
-    // Em uma implementação real, você teria uma função no contexto UI
-    const currentMessages = aiMessages;
-    const updatedMessages = updater(currentMessages);
-    
-    // Aqui você chamaria uma função do contexto para atualizar as mensagens
-    // Por enquanto, apenas para demonstração
-    console.log('Mensagens atualizadas:', updatedMessages);
-  };
-
-  const handleQuickCommand = (entity: string, action: string) => {
-    setMessage(`${action} ${entity}`);
-  };
-
   const clearChat = () => {
     clearAIMessages();
-    setConversationHistory([]);
-  };
-
-  // Renderizar mensagem especial para interpretações de comando e resultados
-  const renderSpecialMessage = (content: string) => {
-    try {
-      // Ignorar mensagens de processamento
-      if (content === 'processing') {
-        return <TypingIndicator />;
-      }
-      
-      const data = JSON.parse(content);
-      
-      if (data.type === 'command_interpretation') {
-        return <CommandInterpretation functionCall={data.functionCall} />;
-      }
-      
-      if (data.type === 'command_result') {
-        return <CommandResult result={data.result} command={data.command} />;
-      }
-      
-      return null;
-    } catch (e) {
-      return null;
-    }
   };
 
   return (
     <div
       className={`fixed bottom-4 right-4 z-50 flex flex-col w-80 md:w-96 ${
-        isMinimized ? 'h-12' : 'h-[32rem]'
+        isMinimized ? 'h-12' : 'h-96'
       } bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 transition-all duration-300`}
     > 
       {/* Header */}
@@ -460,8 +201,8 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <div className="flex items-center">
-          <BrainCircuit size={18} />
-          <h3 className="text-sm font-medium ml-2">Assistente AI Avançado</h3>
+          <BrainCircuit size={18} className="mr-2" />
+          <h3 className="text-sm font-medium">Assistente AI</h3>
         </div> 
         <div className="flex items-center space-x-2">
           {!isMinimized && (
@@ -501,87 +242,6 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
       
       {!isMinimized && (
         <>
-          {/* Informações sobre o contexto */}
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20">
-            <div className="flex items-start">
-              <Info size={16} className="text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                {selectedTenant 
-                  ? `Conectado ao tenant: ${selectedTenant.name}${selectedCompany ? ` • Empresa: ${selectedCompany.nomeFantasia}` : ''}`
-                  : 'Nenhum tenant selecionado. Algumas operações podem estar limitadas.'
-                }
-              </p>
-            </div>
-          </div>
-          
-          {/* Entidades disponíveis */}
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Entidades disponíveis para consulta
-              </span>
-              <button
-                onClick={() => setShowEntitySelector(!showEntitySelector)}
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                {showEntitySelector ? <ChevronDown size={16} className="transform rotate-180" /> : <ChevronDown size={16} />}
-              </button>
-            </div>
-            
-            {showEntitySelector && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {['transactions', 'tasks', 'users', 'companies', 'organizations', 'tenants'].map(entity => (
-                  <button
-                    key={entity}
-                    onClick={() => {
-                      setSelectedEntity(entity);
-                      setShowEntitySelector(false);
-                    }}
-                    className={`px-2 py-1 text-xs rounded-md ${
-                      selectedEntity === entity
-                        ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                        : 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-500'
-                    }`}
-                  >
-                    {entity === 'transactions' ? 'Transações' :
-                      entity === 'tasks' ? 'Tarefas' :
-                      entity === 'users' ? 'Usuários' :
-                      entity === 'companies' ? 'Empresas' :
-                      entity === 'organizations' ? 'Organizações' :
-                      entity === 'tenants' ? 'Tenants' :
-                      entity}
-                  </button>
-                ))}
-              </div>
-            )}
-            
-            {selectedEntity && (
-              <div className="mt-2 flex space-x-2">
-                <button
-                  onClick={() => handleQuickCommand(selectedEntity, 'Criar novo')}
-                  className="flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-md"
-                >
-                  <Plus size={12} className="mr-1" />
-                  Criar
-                </button>
-                <button
-                  onClick={() => handleQuickCommand(selectedEntity, 'Listar todos os')}
-                  className="flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-md"
-                >
-                  <List size={12} className="mr-1" />
-                  Listar
-                </button>
-                <button
-                  onClick={() => handleQuickCommand(selectedEntity, 'Buscar')}
-                  className="flex items-center px-2 py-1 text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-md"
-                >
-                  <Search size={12} className="mr-1" />
-                  Buscar
-                </button>
-              </div>
-            )}
-          </div>
-          
           {/* Chat Body */}
           <div 
             ref={chatBodyRef}
@@ -590,23 +250,6 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
           >
             <div className="space-y-4">
               {aiMessages.map((msg) => {
-                // Verificar se é uma mensagem especial do sistema
-                const isSystemMessage = msg.role === 'system';
-                
-                // Tentar renderizar mensagem especial
-                if (isSystemMessage) {
-                  const specialContent = renderSpecialMessage(msg.content);
-                  if (specialContent) {
-                    return (
-                      <div key={msg.id}>
-                        {specialContent}
-                      </div>
-                    );
-                  }
-                  // Se não for uma mensagem especial reconhecida, não exibir
-                  return null;
-                }
-                
                 // Renderizar mensagens normais
                 return (
                   <div
@@ -652,6 +295,13 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
                   </div>
                 );
               })}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] rounded-lg px-4 py-2 bg-gray-100 dark:bg-gray-700">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           </div>
@@ -666,10 +316,9 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={isProcessing ? "Processando..." : "Digite um comando ou pergunta..."}
+                placeholder={isProcessing ? "Processando..." : "Digite uma mensagem..."}
                 className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 disabled:opacity-70"
                 disabled={isProcessing}
-                autoFocus
               />
               <button
                 type="submit"
@@ -681,39 +330,6 @@ Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
                 }`}
               >
                 {isProcessing ? <Loader size={18} className="animate-spin" /> : <Send size={18} />}
-              </button>
-            </div>
-            
-            {/* Sugestões de comandos */}
-            <div className="mt-2 flex flex-wrap gap-1">
-              <button
-                onClick={() => setMessage("Listar todas as transações")}
-                disabled={isProcessing || isTyping}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Listar transações
-              </button>
-              <button
-                onClick={() => setMessage("Quais tenants existem no sistema?")}
-                disabled={isProcessing || isTyping}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Listar tenants
-              </button>
-              <button
-                onClick={() => setMessage("Ajuda")}
-                disabled={isProcessing || isTyping}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowe
-d"
-              >
-                Ajuda
-              </button>
-              <button
-                onClick={() => setMessage("Criar nova tarefa com prioridade alta")}
-                disabled={isProcessing || isTyping}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700  dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Criar tarefa
               </button>
             </div>
           </form>
