@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  BrainCircuit, Server, Settings, AlertTriangle, CheckSquare, 
-  MessageCircle, Tool, Database, Sliders, Save, X, ChevronLeft,
-  FileText, Search, Plus, Check, Info
-} from 'lucide-react';
+import { BrainCircuit, Server, Settings, AlertTriangle, CheckSquare, MessageCircle, PenTool as Tool, Database, Sliders, Save, X, ChevronLeft, FileText, Search, Plus, Check, Info } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useUI } from '../../../contexts/UIContext';
 import { AIAgentTemplate, AIAgentTool, AIKnowledgeBase } from '../../../types/agent';
