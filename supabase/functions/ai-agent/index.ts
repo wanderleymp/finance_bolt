@@ -7,12 +7,6 @@ if (!openaiApiKey) {
   console.error('ERRO: Variável de ambiente OPENAI_API_KEY não está configurada!');
 }
 
-// Verificar se a chave da OpenAI está configurada
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-if (!openaiApiKey) {
-  console.error('ERRO: Variável de ambiente OPENAI_API_KEY não está configurada!');
-}
-
 // Configuração CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -136,27 +130,27 @@ Deno.serve(async (req) => {
   }
   
   try {
+    // Validar Content-Type
+    const contentType = req.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      throw new Error('Content-Type deve ser application/json');
+    }
+
     // Obter dados da requisição
     const { message, userId, tenantId, companyId, conversationHistory } = await req.json();
     
     // Validar dados de entrada
     if (!message) {
-      return new Response(
-        JSON.stringify({ error: 'Mensagem não fornecida' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      throw new Error('Mensagem não fornecida');
     }
     
     if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'ID do usuário não fornecido' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+      throw new Error('ID do usuário não fornecido');
     }
     
     // Inicializar cliente Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Variáveis de ambiente do Supabase não configuradas');
@@ -165,10 +159,6 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Inicializar cliente OpenAI
-    if (!openaiApiKey) {
-      throw new Error('Chave de API do OpenAI não configurada');
-    }
-    
     if (!openaiApiKey) {
       throw new Error('Chave de API do OpenAI não configurada');
     }
@@ -473,10 +463,21 @@ Seja útil, profissional e conciso em suas respostas.`,
   } catch (error) {
     console.error('Erro no processamento:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor';
+    const status = error instanceof Error && error.message.includes('não fornecid') ? 400 : 500;
     
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno do servidor' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json'
+        }, 
+        status 
+      }
     );
   }
 });
