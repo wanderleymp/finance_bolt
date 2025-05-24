@@ -211,7 +211,7 @@ const LLMDashboard: React.FC = () => {
           </button>
           
           <button
-            onClick={() => navigate('/admin/llm/settings')}
+            onClick={() => navigate('/admin/llm')}
             className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <Settings className="h-4 w-4 mr-1.5" />
@@ -555,34 +555,4 @@ const LLMDashboard: React.FC = () => {
                         {formatCurrency(log.estimatedCost)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          log.status === 'success'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300'
-                        }`}>
-                          {log.status === 'success' ? (
-                            <>
-                              <CheckCircle size={12} className="mr-1" />
-                              Sucesso
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle size={12} className="mr-1" />
-                              Erro
-                            </>
-                          )}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default LLMDashboard;
+                        <span className={`inline-flex items
