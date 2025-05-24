@@ -90,34 +90,34 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
       });
       return;
     }
-    
-    // Se o usuário está autenticado, mas não há tenant/empresa selecionada
-    // Seleciona automaticamente a primeira disponível
-    if (isAuthenticated && user && tenants.length > 0) {
-      // Obter preferência do localStorage ou usar o primeiro tenant
+
+    // Selecionar tenant/company automaticamente apenas se ainda não estiver selecionado
+    if (
+      isAuthenticated &&
+      user &&
+      tenants.length > 0 &&
+      (!user.tenantId || !tenants.some(t => t.id === user.tenantId))
+    ) {
       const savedTenantId = localStorage.getItem('lastTenantId');
       const tenantToSelect = savedTenantId 
         ? tenants.find(t => t.id === savedTenantId) || tenants[0]
         : tenants[0];
-      
-      // Selecionar tenant automaticamente
       selectTenant(tenantToSelect.id);
-      
-      // Filtrar empresas do tenant
+
       const tenantCompanies = companies.filter(c => c.tenantId === tenantToSelect.id);
-      
-      if (tenantCompanies.length > 0) {
-        // Obter preferência do localStorage ou usar a primeira empresa
+      if (
+        tenantCompanies.length > 0 &&
+        (!user.companyId || !tenantCompanies.some(c => c.id === user.companyId))
+      ) {
         const savedCompanyId = localStorage.getItem('lastCompanyId');
         const companyToSelect = savedCompanyId 
           ? tenantCompanies.find(c => c.id === savedCompanyId) || tenantCompanies[0]
           : tenantCompanies[0];
-        
-        // Selecionar empresa automaticamente
         selectCompany(companyToSelect.id);
       }
     }
-  }, [isAuthenticated, loading, user, tenants, companies, selectTenant, selectCompany, navigate, location.pathname, addToast, redirectMessageShown]);
+  }, [isAuthenticated, loading, user, tenants, companies, navigate, location.pathname, addToast, redirectMessageShown]); // Removido selectTenant e selectCompany das dependências para evitar loop
+
   
   if (loading) {
     return <div className="flex h-screen w-full items-center justify-center">

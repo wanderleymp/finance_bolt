@@ -6,6 +6,7 @@ import { TenantProvider } from './contexts/TenantContext';
 import AppRoutes from './routes/AppRoutes';
 import { Toaster } from './components/ui/Toaster';
 import { supabase } from './lib/supabase';
+import DatabaseConfigWarning from './components/DatabaseConfigWarning';
 
 // Supabase providers
 import { SupabaseAuthProvider } from './contexts/SupabaseAuthContext';
@@ -13,18 +14,13 @@ import { SupabaseTenantProvider } from './contexts/SupabaseTenantContext';
 
 function App() {
   // Verificar se as credenciais do Supabase estão configuradas
-  useEffect(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('AVISO: Variáveis de ambiente do Supabase não encontradas.');
-      console.info('Por favor, conecte-se ao Supabase usando o botão no canto superior direito ou configure as variáveis de ambiente.');
-    }
-  }, []);
-
-  // Verificar se estamos usando o mock ou o Supabase real
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   const useSupabaseAuth = import.meta.env.VITE_USE_SUPABASE_AUTH === 'true';
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return <DatabaseConfigWarning />;
+  }
 
   return (
     <Router>
