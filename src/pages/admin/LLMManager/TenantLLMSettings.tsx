@@ -79,7 +79,6 @@ const TenantLLMSettings: React.FC = () => {
     }
   }, [tenantId]);
 
-  // Quando o provedor muda, atualizar lista de modelos
   useEffect(() => {
     if (llmSettings.defaultProviderId) {
       fetchModels(llmSettings.defaultProviderId);
@@ -109,7 +108,7 @@ const TenantLLMSettings: React.FC = () => {
         .from('tenant_llm_settings')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle(); // Usando maybeSingle() ao invés de single()
       
       if (!settingsError && settingsData) {
         setLLMSettings({
@@ -134,7 +133,7 @@ const TenantLLMSettings: React.FC = () => {
         .from('llm_budget_settings')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle(); // Usando maybeSingle() ao invés de single()
       
       if (!budgetError && budgetData) {
         setBudgetSettings({
@@ -708,7 +707,7 @@ const TenantLLMSettings: React.FC = () => {
                   onChange={(e) => handleParameterChange('frequencyPenalty', parseFloat(e.target.value))}
                   className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
                 />
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="flex justify-between text-xs text-gray-500  dark:text-gray-400 mt-1">
                   <span>Sem penalidade (0)</span>
                   <span>Máxima (2)</span>
                 </div>
