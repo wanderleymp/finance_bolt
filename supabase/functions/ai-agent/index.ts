@@ -7,6 +7,12 @@ if (!openaiApiKey) {
   console.error('ERRO: Variável de ambiente OPENAI_API_KEY não está configurada!');
 }
 
+// Verificar se a chave da OpenAI está configurada
+const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+if (!openaiApiKey) {
+  console.error('ERRO: Variável de ambiente OPENAI_API_KEY não está configurada!');
+}
+
 // Configuração CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -159,6 +165,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Inicializar cliente OpenAI
+    if (!openaiApiKey) {
+      throw new Error('Chave de API do OpenAI não configurada');
+    }
+    
     if (!openaiApiKey) {
       throw new Error('Chave de API do OpenAI não configurada');
     }
@@ -435,7 +445,7 @@ Seja útil, profissional e conciso em suas respostas.`,
           { 
             role: 'function', 
             name: assistantResponse.function_call.name, 
-            content: JSON.stringify(functionResult) 
+            content: JSON.stringify(functionResult)
           },
         ],
         temperature: 0.7,
@@ -462,6 +472,7 @@ Seja útil, profissional e conciso em suas respostas.`,
     }
   } catch (error) {
     console.error('Erro no processamento:', error);
+    
     
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno do servidor' }),

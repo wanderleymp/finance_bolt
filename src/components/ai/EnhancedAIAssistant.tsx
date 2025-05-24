@@ -8,14 +8,18 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { AIMessage } from '../../types';
+import { v4 as uuidv4 } from 'uuid';
 
 // Componente para efeito de digitação
 const TypingIndicator: React.FC = () => {
   return (
-    <div className="flex space-x-1 items-center px-2 py-1">
-      <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-      <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-      <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+    <div className="flex space-x-2 items-center px-3 py-2">
+      <div className="flex space-x-1">
+        <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+        <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+        <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+      </div>
+      <span className="text-xs text-gray-500 dark:text-gray-400">Assistente está digitando...</span>
     </div>
   );
 };
@@ -195,21 +199,23 @@ const EnhancedAIAssistant: React.FC = () => {
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
 
   // Mensagem de boas-vindas inicial
   useEffect(() => {
-    // Verificar se já existe uma mensagem de boas-vindas
-    const hasWelcomeMessage = aiMessages.some(msg => 
-      msg.role === 'assistant' && msg.content.includes('Como posso ajudar')
-    );
-    
-    if (!hasWelcomeMessage) {
+    if (!initialized) {
+      // Limpar mensagens anteriores
+      clearAIMessages();
+      
+      // Adicionar mensagem de boas-vindas
       addAIMessage({
         role: 'assistant',
-        content: `Olá! Sou o assistente AI avançado com capacidades CRUD. Posso ajudar você a:
+        content: `Olá! Sou o assistente AI avançado com capacidades de consulta ao banco de dados.
+
+Posso ajudar você a:
 
 • Listar dados (ex: "listar todas as transações")
 • Criar registros (ex: "criar nova tarefa")
@@ -217,10 +223,10 @@ const EnhancedAIAssistant: React.FC = () => {
 • Atualizar dados (ex: "atualizar usuário com id X")
 • Excluir registros (ex: "excluir transação com id X")
 
-Como posso ajudar você hoje?`
+Experimente perguntar "quais tenants temos?" ou "listar todas as empresas".`
       });
     }
-  }, []);
+  }, [initialized, addAIMessage, clearAIMessages]);
 
   // Rolar para o final das mensagens quando novas mensagens forem adicionadas
   useEffect(() => {
@@ -236,6 +242,9 @@ Como posso ajudar você hoje?`
     
     setIsProcessing(true);
     
+    // Mostrar indicador de digitação imediatamente
+    setIsTyping(true);
+    
     // Criar mensagem do usuário
     const userMessage: Omit<AIMessage, 'id' | 'timestamp'> = {
       role: 'user',
@@ -245,9 +254,6 @@ Como posso ajudar você hoje?`
     // Adicionar ao histórico de mensagens
     addAIMessage(userMessage);
 
-    // Mostrar indicador de digitação
-    setIsTyping(true);
-    
     // Atualizar histórico de conversa para o LLM
     const updatedHistory = [...conversationHistory, userMessage];
     setConversationHistory(updatedHistory);
@@ -255,6 +261,15 @@ Como posso ajudar você hoje?`
     try {
       // Pequeno delay para simular processamento
       await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Adicionar mensagem temporária de processamento
+      const processingMessageId = `processing-${uuidv4()}`;
+      addAIMessage({
+        id: processingMessageId,
+        role: 'system',
+        content: 'processing',
+        timestamp: new Date().toISOString(),
+      });
       
       // Obter URL da função Edge
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent`;
@@ -289,6 +304,9 @@ Como posso ajudar você hoje?`
       
       // Se houver uma chamada de função, mostrar a interpretação
       if (result.functionCall) {
+        // Remover mensagem de processamento
+        setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
+        
         // Adicionar interpretação do comando
         addAIMessage({
           role: 'system',
@@ -299,7 +317,7 @@ Como posso ajudar você hoje?`
         });
         
         // Pequeno delay para simular processamento
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Se houver um resultado da função, mostrar
         if (result.functionCall.result) {
@@ -316,8 +334,14 @@ Como posso ajudar você hoje?`
           });
         }
       }
+      else {
+        // Remover mensagem de processamento
+        setAIMessages(prev => prev.filter(msg => msg.id !== processingMessageId));
+      }
       
       // Adicionar resposta do assistente após um pequeno delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       const assistantMessage = {
         role: 'assistant',
         content: result.response || 'Não foi possível processar sua solicitação.',
@@ -330,6 +354,7 @@ Como posso ajudar você hoje?`
       
     } catch (error) {
       console.error('Erro ao processar mensagem:', error);
+      setIsTyping(false);
       
       // Adicionar mensagem de erro
       addAIMessage({
@@ -344,6 +369,18 @@ Como posso ajudar você hoje?`
     setIsTyping(false);
   };
 
+  // Função para limpar mensagens de processamento
+  const setAIMessages = (updater: (prev: AIMessage[]) => AIMessage[]) => {
+    // Esta função é um mock para simular a atualização das mensagens
+    // Em uma implementação real, você teria uma função no contexto UI
+    const currentMessages = aiMessages;
+    const updatedMessages = updater(currentMessages);
+    
+    // Aqui você chamaria uma função do contexto para atualizar as mensagens
+    // Por enquanto, apenas para demonstração
+    console.log('Mensagens atualizadas:', updatedMessages);
+  };
+
   const handleQuickCommand = (entity: string, action: string) => {
     setMessage(`${action} ${entity}`);
   };
@@ -356,6 +393,11 @@ Como posso ajudar você hoje?`
   // Renderizar mensagem especial para interpretações de comando e resultados
   const renderSpecialMessage = (content: string) => {
     try {
+      // Ignorar mensagens de processamento
+      if (content === 'processing') {
+        return <TypingIndicator />;
+      }
+      
       const data = JSON.parse(content);
       
       if (data.type === 'command_interpretation') {
@@ -382,9 +424,9 @@ Como posso ajudar você hoje?`
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 text-white rounded-t-lg cursor-pointer"
         onClick={() => setIsMinimized(!isMinimized)}
       >
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center">
           <BrainCircuit size={18} />
-          <h3 className="text-sm font-medium">Assistente AI Avançado</h3>
+          <h3 className="text-sm font-medium ml-2">Assistente AI Avançado</h3>
         </div> 
         <div className="flex items-center space-x-2">
           {!isMinimized && (
@@ -425,7 +467,7 @@ Como posso ajudar você hoje?`
       {!isMinimized && (
         <>
           {/* Informações sobre o contexto */}
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/10">
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20">
             <div className="flex items-start">
               <Info size={16} className="text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
               <p className="text-xs text-blue-700 dark:text-blue-300">
@@ -509,17 +551,9 @@ Como posso ajudar você hoje?`
           <div 
             ref={chatBodyRef}
             className="flex-1 p-4 overflow-y-auto"
+            style={{ scrollBehavior: 'smooth' }}
           >
             <div className="space-y-4">
-              {/* Indicador de digitação */}
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="max-w-[85%] rounded-lg px-4 py-2 bg-gray-100 dark:bg-gray-700">
-                    <TypingIndicator />
-                  </div>
-                </div>
-              )}
-              
               {aiMessages.map((msg) => {
                 // Verificar se é uma mensagem especial do sistema
                 const isSystemMessage = msg.role === 'system';
@@ -600,6 +634,7 @@ Como posso ajudar você hoje?`
                 placeholder={isProcessing ? "Processando..." : "Digite um comando ou pergunta..."}
                 className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 disabled:opacity-70"
                 disabled={isProcessing}
+                autoFocus
               />
               <button
                 type="submit"
@@ -618,29 +653,29 @@ Como posso ajudar você hoje?`
             <div className="mt-2 flex flex-wrap gap-1">
               <button
                 onClick={() => setMessage("Listar todas as transações")}
-                disabled={isProcessing}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                disabled={isProcessing || isTyping}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Listar transações
               </button>
               <button
                 onClick={() => setMessage("Quais tenants existem no sistema?")}
-                disabled={isProcessing}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                disabled={isProcessing || isTyping}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Listar tenants
               </button>
               <button
                 onClick={() => setMessage("Ajuda")}
-                disabled={isProcessing}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                disabled={isProcessing || isTyping}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Ajuda
               </button>
               <button
                 onClick={() => setMessage("Criar nova tarefa com prioridade alta")}
-                disabled={isProcessing}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+                disabled={isProcessing || isTyping}
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Criar tarefa
               </button>
