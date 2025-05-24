@@ -3,11 +3,22 @@ import { useUI } from '../../contexts/UIContext';
 import { 
   X, Send, ChevronDown, Bot, User, Sparkles, Trash, Database, 
   AlertCircle, CheckCircle, Loader, HelpCircle, List, Plus, 
-  Search, Filter, ArrowRight, BrainCircuit
+  Search, Filter, ArrowRight, BrainCircuit, Info
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
 import { AIMessage } from '../../types';
+
+// Componente para efeito de digitação
+const TypingIndicator: React.FC = () => {
+  return (
+    <div className="flex space-x-1 items-center px-2 py-1">
+      <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+      <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+      <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+    </div>
+  );
+};
 
 // Componente para exibir resultados de operações CRUD
 const CommandResult: React.FC<{
@@ -183,9 +194,33 @@ const EnhancedAIAssistant: React.FC = () => {
   const [showEntitySelector, setShowEntitySelector] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
+  const [isTyping, setIsTyping] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
+
+  // Mensagem de boas-vindas inicial
+  useEffect(() => {
+    // Verificar se já existe uma mensagem de boas-vindas
+    const hasWelcomeMessage = aiMessages.some(msg => 
+      msg.role === 'assistant' && msg.content.includes('Como posso ajudar')
+    );
+    
+    if (!hasWelcomeMessage) {
+      addAIMessage({
+        role: 'assistant',
+        content: `Olá! Sou o assistente AI avançado com capacidades CRUD. Posso ajudar você a:
+
+• Listar dados (ex: "listar todas as transações")
+• Criar registros (ex: "criar nova tarefa")
+• Buscar informações (ex: "buscar tenant com id X")
+• Atualizar dados (ex: "atualizar usuário com id X")
+• Excluir registros (ex: "excluir transação com id X")
+
+Como posso ajudar você hoje?`
+      });
+    }
+  }, []);
 
   // Rolar para o final das mensagens quando novas mensagens forem adicionadas
   useEffect(() => {
@@ -202,19 +237,25 @@ const EnhancedAIAssistant: React.FC = () => {
     setIsProcessing(true);
     
     // Criar mensagem do usuário
-    const userMessage = {
+    const userMessage: Omit<AIMessage, 'id' | 'timestamp'> = {
       role: 'user',
       content: message,
     };
     
     // Adicionar ao histórico de mensagens
     addAIMessage(userMessage);
+
+    // Mostrar indicador de digitação
+    setIsTyping(true);
     
     // Atualizar histórico de conversa para o LLM
     const updatedHistory = [...conversationHistory, userMessage];
     setConversationHistory(updatedHistory);
     
     try {
+      // Pequeno delay para simular processamento
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Obter URL da função Edge
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-agent`;
       
@@ -248,6 +289,7 @@ const EnhancedAIAssistant: React.FC = () => {
       
       // Se houver uma chamada de função, mostrar a interpretação
       if (result.functionCall) {
+        // Adicionar interpretação do comando
         addAIMessage({
           role: 'system',
           content: JSON.stringify({ 
@@ -255,6 +297,9 @@ const EnhancedAIAssistant: React.FC = () => {
             functionCall: result.functionCall
           }),
         });
+        
+        // Pequeno delay para simular processamento
+        await new Promise(resolve => setTimeout(resolve, 800));
         
         // Se houver um resultado da função, mostrar
         if (result.functionCall.result) {
@@ -272,7 +317,7 @@ const EnhancedAIAssistant: React.FC = () => {
         }
       }
       
-      // Adicionar resposta do assistente
+      // Adicionar resposta do assistente após um pequeno delay
       const assistantMessage = {
         role: 'assistant',
         content: result.response || 'Não foi possível processar sua solicitação.',
@@ -296,6 +341,7 @@ const EnhancedAIAssistant: React.FC = () => {
     // Limpar o input
     setMessage('');
     setIsProcessing(false);
+    setIsTyping(false);
   };
 
   const handleQuickCommand = (entity: string, action: string) => {
@@ -331,7 +377,7 @@ const EnhancedAIAssistant: React.FC = () => {
       className={`fixed bottom-4 right-4 z-50 flex flex-col w-80 md:w-96 ${
         isMinimized ? 'h-12' : 'h-[32rem]'
       } bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 transition-all duration-300`}
-    >
+    > 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-indigo-600 text-white rounded-t-lg cursor-pointer"
         onClick={() => setIsMinimized(!isMinimized)}
@@ -339,7 +385,7 @@ const EnhancedAIAssistant: React.FC = () => {
         <div className="flex items-center space-x-2">
           <BrainCircuit size={18} />
           <h3 className="text-sm font-medium">Assistente AI Avançado</h3>
-        </div>
+        </div> 
         <div className="flex items-center space-x-2">
           {!isMinimized && (
             <button
@@ -378,6 +424,19 @@ const EnhancedAIAssistant: React.FC = () => {
       
       {!isMinimized && (
         <>
+          {/* Informações sobre o contexto */}
+          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/10">
+            <div className="flex items-start">
+              <Info size={16} className="text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                {selectedTenant 
+                  ? `Conectado ao tenant: ${selectedTenant.name}${selectedCompany ? ` • Empresa: ${selectedCompany.nomeFantasia}` : ''}`
+                  : 'Nenhum tenant selecionado. Algumas operações podem estar limitadas.'
+                }
+              </p>
+            </div>
+          </div>
+          
           {/* Entidades disponíveis */}
           <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
             <div className="flex items-center justify-between">
@@ -452,6 +511,15 @@ const EnhancedAIAssistant: React.FC = () => {
             className="flex-1 p-4 overflow-y-auto"
           >
             <div className="space-y-4">
+              {/* Indicador de digitação */}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] rounded-lg px-4 py-2 bg-gray-100 dark:bg-gray-700">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              )}
+              
               {aiMessages.map((msg) => {
                 // Verificar se é uma mensagem especial do sistema
                 const isSystemMessage = msg.role === 'system';
@@ -529,7 +597,7 @@ const EnhancedAIAssistant: React.FC = () => {
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Digite um comando ou pergunta..."
+                placeholder={isProcessing ? "Processando..." : "Digite um comando ou pergunta..."}
                 className="flex-1 px-3 py-2 bg-transparent border-none outline-none text-gray-700 dark:text-gray-200 text-sm placeholder-gray-400 disabled:opacity-70"
                 disabled={isProcessing}
               />
@@ -550,24 +618,28 @@ const EnhancedAIAssistant: React.FC = () => {
             <div className="mt-2 flex flex-wrap gap-1">
               <button
                 onClick={() => setMessage("Listar todas as transações")}
+                disabled={isProcessing}
                 className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Listar transações
               </button>
               <button
                 onClick={() => setMessage("Quais tenants existem no sistema?")}
+                disabled={isProcessing}
                 className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Listar tenants
               </button>
               <button
                 onClick={() => setMessage("Ajuda")}
+                disabled={isProcessing}
                 className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Ajuda
               </button>
               <button
                 onClick={() => setMessage("Criar nova tarefa com prioridade alta")}
+                disabled={isProcessing}
                 className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Criar tarefa

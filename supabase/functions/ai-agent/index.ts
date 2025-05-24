@@ -1,6 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
 import { OpenAI } from 'npm:openai@4.28.0';
 
+// Verificar se a chave da OpenAI está configurada
+const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+if (!openaiApiKey) {
+  console.error('ERRO: Variável de ambiente OPENAI_API_KEY não está configurada!');
+}
+
 // Configuração CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -153,7 +159,6 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Inicializar cliente OpenAI
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
       throw new Error('Chave de API do OpenAI não configurada');
     }
@@ -244,7 +249,8 @@ Seja útil, profissional e conciso em suas respostas.`,
       model: 'gpt-4-turbo-preview',
       messages: [systemMessage, ...formattedHistory, { role: 'user', content: message }],
       functions,
-      function_call: 'auto',
+      function_call: 'auto', 
+      temperature: 0.7,
     });
     
     const assistantResponse = response.choices[0].message;
@@ -423,7 +429,7 @@ Seja útil, profissional e conciso em suas respostas.`,
         model: 'gpt-4-turbo-preview',
         messages: [
           systemMessage,
-          ...formattedHistory,
+          ...formattedHistory, 
           { role: 'user', content: message },
           assistantResponse,
           { 
@@ -432,6 +438,7 @@ Seja útil, profissional e conciso em suas respostas.`,
             content: JSON.stringify(functionResult) 
           },
         ],
+        temperature: 0.7,
       });
       
       // Retornar a resposta final
