@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Package, Settings, BarChart2, 
-  Server, Database, Shield, Building, Menu, ChevronLeft, 
+  Server, Database, Shield, Building, Menu, ChevronLeft, BrainCircuit,
   ChevronRight, Activity, Calendar, LogOut, Key, HardDrive
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,6 +21,7 @@ const AdminLayout: React.FC = () => {
     { path: '/admin/modules', icon: <Server size={20} />, label: 'Módulos' },
     { path: '/admin/users', icon: <Users size={20} />, label: 'Usuários' },
     { path: '/admin/audit-logs', icon: <Activity size={20} />, label: 'Logs de Auditoria' },
+    { path: '/admin/llm', icon: <BrainCircuit size={20} />, label: 'LLM Manager' },
     { path: '/admin/reports', icon: <BarChart2 size={20} />, label: 'Relatórios' },
     { path: '/admin/subscriptions', icon: <Calendar size={20} />, label: 'Assinaturas' },
     { path: '/admin/credentials', icon: <Key size={20} />, label: 'Credenciais' },

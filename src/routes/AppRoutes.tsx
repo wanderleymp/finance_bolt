@@ -59,6 +59,11 @@ import EditStorageConfig from '../pages/admin/Storage/EditStorageConfig';
 import StorageConfigDetail from '../pages/admin/Storage/StorageConfigDetail';
 import ModuleStorageMappingsIndex from '../pages/admin/Storage/ModuleStorageMappingsIndex';
 
+// LLM Manager Pages
+import LLMDashboard from '../pages/admin/LLMManager/LLMDashboard';
+import ProviderCredentialsForm from '../pages/admin/LLMManager/ProviderCredentialsForm';
+import TenantLLMSettings from '../pages/admin/LLMManager/TenantLLMSettings';
+
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -236,6 +241,13 @@ const AppRoutes: React.FC = () => {
         <Route path="storage/:id" element={<StorageConfigDetail />} />
         <Route path="storage/:id/edit" element={<EditStorageConfig />} />
         <Route path="storage/mappings" element={<ModuleStorageMappingsIndex />} />
+        
+        {/* LLM Manager Routes */}
+        <Route path="llm" element={<LLMDashboard />} />
+        <Route path="llm/credentials/new" element={<ProviderCredentialsForm />} />
+        <Route path="llm/credentials/:id/edit" element={<ProviderCredentialsForm />} />
+        <Route path="llm/providers/:providerId/credentials/new" element={<ProviderCredentialsForm />} />
+        <Route path="llm/tenants/:tenantId/settings" element={<TenantLLMSettings />} />
       </Route>
 
       {/* Main App Routes */}
