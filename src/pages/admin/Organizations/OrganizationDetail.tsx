@@ -22,7 +22,7 @@ const OrganizationDetail: React.FC = () => {
     if (id) {
       fetchOrganizationData(id);
     } else {
-      navigate('/admin/organizations');
+      navigate('/admin');
     }
   }, [id, navigate]);
 
@@ -161,23 +161,31 @@ const OrganizationDetail: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <div className="mb-6 flex justify-between items-center">
-        <button
-          onClick={() => navigate('/admin/organizations')}
-          className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Voltar
-        </button>
-        
-        <Link
-          to={`/admin/organizations/${id}/edit`}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <Edit className="h-4 w-4 mr-2" />
-          Editar Organização
-        </Link>
-      </div>
+      <div className="mb-6 flex flex-wrap gap-2 justify-between items-center">
+  <div className="flex gap-2">
+    <button
+      onClick={() => navigate('/admin')}
+      className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+    >
+      <ChevronLeft className="h-4 w-4 mr-1" />
+      Menu Principal
+    </button>
+    <button
+      onClick={() => navigate('/')}
+      className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+    >
+      <ChevronLeft className="h-4 w-4 mr-1" />
+      Dashboard Principal
+    </button>
+  </div>
+  <Link
+    to={`/admin/organizations/${id}/edit`}
+    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+  >
+    <Edit className="h-4 w-4 mr-2" />
+    Editar Organização
+  </Link>
+</div>
 
       {/* Header com informações principais */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 mb-6">

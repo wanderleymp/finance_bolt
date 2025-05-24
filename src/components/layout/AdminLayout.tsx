@@ -54,6 +54,18 @@ const AdminLayout: React.FC = () => {
             </button>
           </div>
           <div className="flex-1 flex flex-col overflow-y-auto">
+            {/* Botões de navegação rápida */}
+            <div className="px-2 pt-4 pb-2 flex flex-col gap-2">
+  <Link
+    to="/"
+    className="inline-flex items-center px-3 py-2 mb-1 text-sm font-medium rounded-md bg-white text-indigo-700 hover:bg-indigo-100 border border-indigo-200 dark:bg-gray-800 dark:text-indigo-200 dark:border-indigo-700 dark:hover:bg-gray-900 transition-colors"
+  >
+    <LayoutDashboard className="h-4 w-4 mr-2" />
+    <span className={`${sidebarExpanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'} transition-opacity duration-300`}>
+      Dashboard Principal
+    </span>
+  </Link>
+</div>
             <nav className="mt-5 flex-1 px-2 space-y-1">
               {adminLinks.map((link) => (
                 <Link
