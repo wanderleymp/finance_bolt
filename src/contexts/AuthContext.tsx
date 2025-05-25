@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthState, User } from '../types';
 import { mockUsers } from '../data/mockData';
+import { permissions as rbacPermissions, roles as rbacRoles, userRoles as rbacUserRoles } from '../data/rbacMock';
+import { Permission, Role, UserRole } from '../types/rbac';
 import { supabase } from '../lib/supabase';
 import { useUI } from './UIContext';
 
@@ -9,6 +11,10 @@ interface AuthContextType extends AuthState {
   logout: () => void;
   register: (name: string, email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  permissions: string[];
+  roles: string[];
+  hasPermission: (permissionCode: string) => boolean;
+  hasRole: (roleId: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +37,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error: null,
   });
 
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+
+  // Função para buscar roles e permissões do usuário
+  const resolveUserRBAC = (userId: string) => {
+    // Busca todos os userRoles do usuário
+    const rolesFound = rbacUserRoles.filter(ur => ur.userId === userId).map(ur => ur.roleId);
+    setUserRoles(rolesFound);
+    // Busca todas as permissões dos roles
+    const perms = rolesFound
+      .map(roleId => rbacRoles.find(r => r.id === roleId))
+      .filter(Boolean)
+      .flatMap(role => (role ? role.permissions : []));
+    setUserPermissions(Array.from(new Set(perms)));
+  };
+
+  // Funções utilitárias
+  const hasPermission = (permissionCode: string) => {
+    return userPermissions.includes(permissionCode) || userRoles.includes('superadmin');
+  };
+  const hasRole = (roleId: string) => {
+    return userRoles.includes(roleId);
+  };
+
+
   useEffect(() => {
     // Verificar se há um usuário no localStorage ou sessionStorage
     const loadUserFromStorage = () => {
@@ -45,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             loading: false,
             error: null,
           });
+          resolveUserRBAC(user.id);
         } catch (error) {
           console.error("Erro ao analisar usuário do armazenamento:", error);
           localStorage.removeItem('user');
@@ -114,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
         error: null,
       });
+      resolveUserRBAC(updatedUser.id);
     } catch (error) {
       console.error("Erro no login:", error);
       setState({
@@ -122,6 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
         error: error instanceof Error ? error.message : 'Erro ao fazer login',
       });
+      setUserPermissions([]);
+      setUserRoles([]);
       
       // Exibir toast de erro
       addToast({
@@ -161,6 +196,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading: false,
       error: null,
     });
+    setUserPermissions([]);
+    setUserRoles([]);
   };
 
   const register = async (name: string, email: string, password: string) => {
@@ -199,6 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
         error: null,
       });
+      resolveUserRBAC(newUser.id);
       
       localStorage.setItem('user', JSON.stringify(newUser));
     } catch (error) {
@@ -262,7 +300,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     register,
     resetPassword,
+    permissions: userPermissions,
+    roles: userRoles,
+    hasPermission,
+    hasRole,
   };
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

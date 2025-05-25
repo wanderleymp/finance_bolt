@@ -1,4 +1,5 @@
 import React from 'react';
+import Protected from '../../components/Protected';
 
 const FinancialPage: React.FC = () => {
   return (
@@ -7,6 +8,14 @@ const FinancialPage: React.FC = () => {
       
       <div className="bg-white rounded-lg shadow-md p-6">
         <p className="text-gray-700">Bem-vindo à página de gerenciamento financeiro. Aqui você poderá visualizar seu resumo financeiro, transações e outras informações importantes.</p>
+
+        <div className="mt-4 mb-6">
+          <Protected permission="financial:transactions:create">
+            <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+              Nova Transação
+            </button>
+          </Protected>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">

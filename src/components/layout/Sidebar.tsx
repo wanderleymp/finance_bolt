@@ -19,6 +19,7 @@ import {
   Server
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import Protected from '../Protected';
 
 const Sidebar: React.FC = () => {
   const { sidebarOpen, toggleSidebar } = useUI();
@@ -251,7 +252,7 @@ const Sidebar: React.FC = () => {
           </NavLink>
 
           {/* Link para o Módulo SaaS Admin - apenas para super admins */}
-          {isSuperAdmin && (
+          <Protected permission="admin:users:manage">
             <NavLink
               to="/admin"
               className={({ isActive }) =>
@@ -266,7 +267,7 @@ const Sidebar: React.FC = () => {
               <Server size={20} />
               {expanded && <span className="ml-3 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out">SaaS Admin</span>}
             </NavLink>
-          )}
+          </Protected>
 
           <hr className="my-4 border-gray-200 dark:border-gray-700" />
 

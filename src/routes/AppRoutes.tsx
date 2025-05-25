@@ -7,6 +7,7 @@ import { useUI } from '../contexts/UIContext';
 // Layout
 import MainLayout from '../components/layout/MainLayout';
 import AdminLayout from '../components/layout/AdminLayout';
+import Protected from '../components/Protected';
 
 // Auth Pages
 import LoginPage from '../pages/auth/LoginPage';
@@ -234,10 +235,26 @@ const AppRoutes: React.FC = () => {
         <Route path="organizations/new" element={<NewOrganization />} />
         <Route path="organizations/:id" element={<OrganizationDetail />} />
         <Route path="organizations/:id/edit" element={<EditOrganization />} />
-        <Route path="users" element={<UsersIndex />} />
-        <Route path="users/new" element={<NewUser />} />
-        <Route path="users/:id" element={<UserDetail />} />
-        <Route path="users/:id/edit" element={<EditUser />} />
+        <Route path="users" element={
+          <Protected permission="admin:users:manage">
+            <UsersIndex />
+          </Protected>
+        } />
+        <Route path="users/new" element={
+          <Protected permission="admin:users:manage">
+            <NewUser />
+          </Protected>
+        } />
+        <Route path="users/:id" element={
+          <Protected permission="admin:users:manage">
+            <UserDetail />
+          </Protected>
+        } />
+        <Route path="users/:id/edit" element={
+          <Protected permission="admin:users:manage">
+            <EditUser />
+          </Protected>
+        } />
         <Route path="audit-logs" element={<AuditLogsIndex />} />
         
         {/* Rotas para gerenciamento de credenciais e armazenamento */}

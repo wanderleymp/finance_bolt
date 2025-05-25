@@ -9,6 +9,10 @@ interface SupabaseAuthContextType extends AuthState {
   signOut: () => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  permissions: string[];
+  roles: string[];
+  hasPermission: (permissionCode: string) => boolean;
+  hasRole: (roleId: string) => boolean;
 }
 
 const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(undefined);
@@ -31,6 +35,40 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     error: null,
   });
 
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+
+  // Função para buscar roles e permissões do usuário no Supabase
+  const resolveUserRBAC = async (userId: string) => {
+    // Buscar roles do usuário
+    const { data: userRolesData, error: userRolesError } = await supabase
+      .from('user_roles')
+      .select('role_id, role:roles(id, name, description, is_system, role_permissions(permission_id, permission:permissions(code)))')
+      .eq('user_id', userId);
+    if (userRolesError) {
+      setUserRoles([]);
+      setUserPermissions([]);
+      return;
+    }
+    // Extrair roles
+    const rolesFound = userRolesData.map((ur: any) => ur.role_id);
+    setUserRoles(rolesFound);
+    // Extrair permissões
+    const perms = userRolesData
+      .flatMap((ur: any) => ur.role.role_permissions?.map((rp: any) => rp.permission?.code) || [])
+      .filter(Boolean);
+    setUserPermissions(Array.from(new Set(perms)));
+  };
+
+  // Funções utilitárias
+  const hasPermission = (permissionCode: string) => {
+    return userPermissions.includes(permissionCode) || userRoles.includes('superadmin');
+  };
+  const hasRole = (roleId: string) => {
+    return userRoles.includes(roleId);
+  };
+
+
   useEffect(() => {
     // Verificar sessão atual
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -50,6 +88,7 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
           loading: false,
           error: null,
         });
+        if (userData?.id) await resolveUserRBAC(userData.id);
       } else {
         setState({
           isAuthenticated: false,
@@ -57,6 +96,8 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
           loading: false,
           error: error?.message || null,
         });
+        setUserPermissions([]);
+        setUserRoles([]);
       }
     };
 
@@ -83,12 +124,18 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const newUserProfile = {
         id: authUser.id,
         email: authUser.email || '',
-        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || '',
-        role: 'user',
-        last_login: new Date().toISOString(),
+        name: (authUser.user_metadata?.name as string) || authUser.email?.split('@')[0] || '',
+        avatar: undefined,
+        role: 'user' as 'user',
+        lastLogin: new Date().toISOString(),
       };
 
-      await supabase.from('users').insert([newUserProfile]);
+
+
+      await supabase.from('users').insert([{
+        ...newUserProfile,
+        last_login: newUserProfile.lastLogin,
+      }]);
       return newUserProfile;
     }
 
@@ -98,12 +145,17 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       .update({ last_login: new Date().toISOString() })
       .eq('id', authUser.id);
 
+    // Garantir que role seja válida
+    let validRole: 'admin' | 'manager' | 'user' | 'superadmin' = 'user';
+    if (['admin', 'manager', 'user', 'superadmin'].includes(data.role)) {
+      validRole = data.role;
+    }
     return {
       id: data.id,
-      name: data.name,
+      name: data.name ?? '',
       email: data.email,
-      avatar: data.avatar_url,
-      role: data.role,
+      avatar: data.avatar_url ?? undefined,
+      role: validRole,
       lastLogin: data.last_login,
     };
   };
@@ -117,6 +169,7 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
         loading: false,
         error: null,
       });
+      if (userData?.id) await resolveUserRBAC(userData.id);
       
       addToast({
         title: 'Login bem-sucedido',
@@ -166,6 +219,8 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
         loading: false,
         error: (error as AuthError).message || 'Falha ao fazer login',
       });
+      setUserPermissions([]);
+      setUserRoles([]);
       
       addToast({
         title: 'Erro ao fazer login',
@@ -303,7 +358,12 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     logout: signOut,
     register: signUp,
     resetPassword,
+    permissions: userPermissions,
+    roles: userRoles,
+    hasPermission,
+    hasRole,
   };
+
 
   return <SupabaseAuthContext.Provider value={value}>{children}</SupabaseAuthContext.Provider>;
 };
